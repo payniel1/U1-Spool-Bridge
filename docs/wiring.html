@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>u1-spool-bridge — wiring</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#2a3441; --fg:#e6edf3; --dim:#8b98a5;
+    --sda:#4f9dff; --scl:#3fb950; --irq:#d29922; --rst:#a878ff;
+    --vcc:#f85149; --gnd:#8b98a5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:24px 16px 48px;-webkit-font-smoothing:antialiased}
+  main{max-width:900px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px;margin-bottom:16px}
+  svg{width:100%;height:auto;display:block}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+    margin:0 0 14px;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--dim);font-weight:600;padding:0 8px 8px 0;border-bottom:1px solid var(--line)}
+  td{padding:9px 8px 9px 0;border-bottom:1px solid #1d242d}
+  tr:last-child td{border-bottom:none}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;
+    vertical-align:-1px;margin-right:8px}
+  code{background:#1c232c;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  .note{color:var(--dim);font-size:13px;margin:14px 0 0}
+  .warn{background:#33270f;border:1px solid #5a4520;color:#f0c674;
+    border-radius:9px;padding:11px 13px;font-size:13px;margin-top:14px}
+  b{font-weight:600}
+</style></head><body>
+<main>
+
+<h1>Wiring — XIAO ESP32-C5 → PN532</h1>
+<p class="sub">Six wires. Four signal, two power. One PN532 on HSU (UART), same
+for every box.</p>
+
+<div class="card">
+<svg viewBox="0 0 880 580" role="img"
+     aria-label="Wiring diagram: XIAO ESP32-C5 connected to a PN532 NFC module with six wires">
+  <defs>
+    <style>
+      .wire{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+      .pad{fill:#1c232c;stroke:#3a4654;stroke-width:1}
+      .padtxt{font:600 11px ui-monospace,SFMono-Regular,monospace;fill:#e6edf3}
+      .padtxt.dimmed{fill:#5b6673}
+      .board{fill:#161b22;stroke:#2a3441;stroke-width:1.5}
+      .lbl{font:600 13px system-ui;fill:#e6edf3}
+      .sublbl{font:11px system-ui;fill:#8b98a5}
+      .wlbl{font:600 11px ui-monospace,monospace}
+    </style>
+  </defs>
+
+  <!-- ================= PN532 ================= -->
+  <rect x="40" y="120" width="250" height="250" rx="10" fill="#3d1f22" stroke="#7a3b40" stroke-width="1.5"/>
+  <rect x="58" y="138" width="150" height="90" rx="6" fill="#2b1418" stroke="#7a3b40"/>
+  <text x="133" y="176" text-anchor="middle" class="sublbl" fill="#c8888e">antenna</text>
+  <text x="133" y="192" text-anchor="middle" class="sublbl" fill="#c8888e">coil</text>
+  <text x="58" y="360" class="lbl" fill="#f0c0c4">PN532 V3</text>
+
+  <!-- DIP switch inset -->
+  <rect x="212" y="138" width="62" height="60" rx="5" fill="#12181f" stroke="#7a3b40"/>
+  <text x="243" y="152" text-anchor="middle" class="wlbl" fill="#c8888e">DIP</text>
+  <rect x="222" y="158" width="18" height="18" rx="3" fill="#2a3441"/>
+  <text x="231" y="171" text-anchor="middle" class="wlbl" fill="#8b98a5">1</text>
+  <text x="231" y="192" text-anchor="middle" class="wlbl" fill="#8b98a5">OFF</text>
+  <rect x="246" y="158" width="18" height="18" rx="3" fill="#2a3441"/>
+  <text x="255" y="171" text-anchor="middle" class="wlbl" fill="#8b98a5">2</text>
+  <text x="255" y="192" text-anchor="middle" class="wlbl" fill="#8b98a5">OFF</text>
+
+  <!-- PN532 terminals (right edge, facing the XIAO) -->
+  <g>
+    <rect class="pad" x="272" y="152" width="36" height="17" rx="3"/>
+    <text x="290" y="164.5" text-anchor="middle" class="padtxt">IRQ</text>
+
+    <rect class="pad" x="272" y="192" width="36" height="17" rx="3"/>
+    <text x="290" y="204.5" text-anchor="middle" class="padtxt">RSTO</text>
+
+    <rect class="pad" x="272" y="232" width="36" height="17" rx="3"/>
+    <text x="290" y="244.5" text-anchor="middle" class="padtxt">SDA</text>
+
+    <rect class="pad" x="272" y="272" width="36" height="17" rx="3"/>
+    <text x="290" y="284.5" text-anchor="middle" class="padtxt">SCL</text>
+
+    <rect class="pad" x="272" y="312" width="36" height="17" rx="3"/>
+    <text x="290" y="324.5" text-anchor="middle" class="padtxt">VCC</text>
+
+    <rect class="pad" x="272" y="352" width="36" height="17" rx="3"/>
+    <text x="290" y="364.5" text-anchor="middle" class="padtxt">GND</text>
+  </g>
+
+  <!-- ================= XIAO ================= -->
+  <rect class="board" x="600" y="96" width="176" height="330" rx="12"/>
+  <!-- USB-C -->
+  <rect x="654" y="86" width="68" height="20" rx="6" fill="#2a3441" stroke="#3a4654"/>
+  <text x="688" y="78" text-anchor="middle" class="sublbl">USB-C</text>
+  <!-- antenna blob -->
+  <rect x="620" y="120" width="136" height="26" rx="5" fill="#1c232c" stroke="#2a3441"/>
+  <text x="688" y="137" text-anchor="middle" class="sublbl">Wi-Fi antenna</text>
+  <text x="688" y="404" text-anchor="middle" class="lbl">XIAO ESP32-C5</text>
+  <text x="688" y="419" text-anchor="middle" class="sublbl">top view</text>
+
+  <!-- left pads: D0..D6 -->
+  <g>
+    <rect class="pad" x="586" y="162" width="30" height="16" rx="3"/><text x="601" y="174" text-anchor="middle" class="padtxt">D0</text>
+    <rect class="pad" x="586" y="198" width="30" height="16" rx="3"/><text x="601" y="210" text-anchor="middle" class="padtxt dimmed">D1</text>
+    <rect class="pad" x="586" y="234" width="30" height="16" rx="3"/><text x="601" y="246" text-anchor="middle" class="padtxt">D2</text>
+    <rect class="pad" x="586" y="270" width="30" height="16" rx="3"/><text x="601" y="282" text-anchor="middle" class="padtxt dimmed">D3</text>
+    <rect class="pad" x="586" y="306" width="30" height="16" rx="3"/><text x="601" y="318" text-anchor="middle" class="padtxt">D4</text>
+    <rect class="pad" x="586" y="342" width="30" height="16" rx="3"/><text x="601" y="354" text-anchor="middle" class="padtxt">D5</text>
+    <rect class="pad" x="586" y="378" width="30" height="16" rx="3"/><text x="601" y="390" text-anchor="middle" class="padtxt dimmed">D6</text>
+  </g>
+  <!-- right pads: 5V, GND, 3V3, D10..D7 -->
+  <g>
+    <rect class="pad" x="760" y="162" width="34" height="16" rx="3"/><text x="777" y="174" text-anchor="middle" class="padtxt dimmed">5V</text>
+    <rect class="pad" x="760" y="198" width="34" height="16" rx="3"/><text x="777" y="210" text-anchor="middle" class="padtxt">GND</text>
+    <rect class="pad" x="760" y="234" width="34" height="16" rx="3"/><text x="777" y="246" text-anchor="middle" class="padtxt">3V3</text>
+    <rect class="pad" x="760" y="270" width="34" height="16" rx="3"/><text x="777" y="282" text-anchor="middle" class="padtxt dimmed">D10</text>
+    <rect class="pad" x="760" y="306" width="34" height="16" rx="3"/><text x="777" y="318" text-anchor="middle" class="padtxt dimmed">D9</text>
+    <rect class="pad" x="760" y="342" width="34" height="16" rx="3"/><text x="777" y="354" text-anchor="middle" class="padtxt dimmed">D8</text>
+    <rect class="pad" x="760" y="378" width="34" height="16" rx="3"/><text x="777" y="390" text-anchor="middle" class="padtxt dimmed">D7</text>
+  </g>
+
+  <!-- ================= wires ================= -->
+  <!-- D0 -> IRQ -->
+  <path class="wire" stroke="var(--irq)" d="M586 170 L520 170 L520 160.5 L308 160.5"/>
+  <text x="414" y="152" text-anchor="middle" class="wlbl" fill="var(--irq)">IRQ</text>
+
+  <!-- D2 -> RSTO -->
+  <path class="wire" stroke="var(--rst)" d="M586 242 L546 242 L546 200.5 L308 200.5"/>
+  <text x="430" y="193" text-anchor="middle" class="wlbl" fill="var(--rst)">RSTO</text>
+
+  <!-- D4 -> SDA -->
+  <path class="wire" stroke="var(--sda)" d="M586 314 L500 314 L500 240.5 L308 240.5"/>
+  <text x="404" y="233" text-anchor="middle" class="wlbl" fill="var(--sda)">SDA</text>
+
+  <!-- D5 -> SCL -->
+  <path class="wire" stroke="var(--scl)" d="M586 350 L470 350 L470 280.5 L308 280.5"/>
+  <text x="389" y="273" text-anchor="middle" class="wlbl" fill="var(--scl)">SCL</text>
+
+  <!-- 3V3 -> VCC : right side, around the bottom -->
+  <path class="wire" stroke="var(--vcc)" d="M794 242 L836 242 L836 476 L340 476 L340 320.5 L308 320.5"/>
+  <text x="590" y="468" text-anchor="middle" class="wlbl" fill="var(--vcc)">3V3 → VCC</text>
+
+  <!-- GND -> GND : right side, around the bottom, lower -->
+  <path class="wire" stroke="var(--gnd)" d="M794 206 L856 206 L856 516 L322 516 L322 360.5 L308 360.5"/>
+  <text x="590" y="508" text-anchor="middle" class="wlbl" fill="var(--gnd)">GND → GND</text>
+
+  <!-- note -->
+  <text x="40" y="556" class="sublbl">Power runs from the XIAO's right-hand pads, so those two wires wrap under the board.</text>
+</svg>
+</div>
+
+<div class="card">
+<h2>The six connections</h2>
+<table>
+  <tr><th>Wire</th><th>XIAO pad</th><th>GPIO</th><th>PN532 pin</th></tr>
+  <tr><td><span class="sw" style="background:var(--sda)"></span>Board <b>RX</b>
+      &larr; module TX</td>
+      <td><b>D4</b></td><td>23</td><td>SDA</td></tr>
+  <tr><td><span class="sw" style="background:var(--scl)"></span>Board <b>TX</b>
+      &rarr; module RX</td>
+      <td><b>D5</b></td><td>24</td><td>SCL</td></tr>
+  <tr><td><span class="sw" style="background:var(--rst)"></span>Reset &mdash; required</td>
+      <td><b>D2</b></td><td>25</td><td>RSTO</td></tr>
+  <tr><td><span class="sw" style="background:var(--irq)"></span>Unused; harmless
+      to leave connected</td>
+      <td><b>D0</b></td><td>1</td><td>IRQ</td></tr>
+  <tr><td><span class="sw" style="background:var(--vcc)"></span>Power</td>
+      <td><b>3V3</b></td><td>—</td><td>VCC</td></tr>
+  <tr><td><span class="sw" style="background:var(--gnd)"></span>Ground</td>
+      <td><b>GND</b></td><td>—</td><td>GND</td></tr>
+</table>
+<p class="note"><b>3V3, not 5V.</b> The PN532 module runs happily at 3.3 V and the
+XIAO's GPIO is not 5 V tolerant.</p>
+</div>
+
+<div class="card">
+<h2>Two things that keep the reader alive</h2>
+<p style="margin:0 0 10px">Both are optional in the sense that it will probably work
+without them on the bench, and both are the difference between a drybox that runs for
+months and one that goes quiet after an hour. If a box keeps dropping its reader, or
+its reset counter climbs, this card is the fix.</p>
+<table>
+  <tr><th>Do this</th><th>Because</th></tr>
+  <tr><td><b>100&nbsp;µF electrolytic + 0.1&nbsp;µF ceramic</b> across the PN532's
+      VCC and GND, right at the module</td>
+      <td>WiFi TX bursts pull tens of mA. Without local bulk the PN532's rail sags
+      mid&#8209;byte and the frame dies. This is the most common cause.</td></tr>
+  <tr><td><b>Keep the two signal wires short</b> — under 10&nbsp;cm, twisted or
+      ribboned</td>
+      <td>Long dupont jumpers make a good aerial. Route them away from the antenna
+      end of the XIAO.</td></tr>
+</table>
+<p class="note"><b>Wire RSTO.</b> It's how the firmware hard-resets a module that has
+stopped answering, and it is the only recovery lever there is. Skipping it means a
+sulking reader stays that way until you power-cycle the box.</p>
+</div>
+
+<div class="card">
+<h2>Set both DIP switches OFF</h2>
+<p style="margin:0 0 10px">Two tiny switches on the PN532. Both off selects
+<b>HSU (UART)</b>, which is the only transport the firmware speaks. Get them wrong and
+the board is silent — it's the first thing to check if the serial log says
+<code>Reader 1 init failed</code>.</p>
+<table>
+  <tr><th>Mode</th><th>Channel 1</th><th>Channel 2</th></tr>
+  <tr><td><b>HSU (UART)</b> — what this firmware uses</td><td>OFF</td><td>OFF</td></tr>
+</table>
+<p class="note">From Elechouse's PN532 V3 manual. Clone modules follow the same table.</p>
+<p class="note"><b>The pads keep their I²C names.</b> The module prints the I²C pin
+names on its front and the HSU names on its back &mdash; the SDA pad is the module's
+TX, the SCL pad its RX &mdash; and the firmware assigns the board's RX/TX to match.
+The crossover happens in the pin map, not in the loom, which is why the six wires above
+go exactly where their labels say.</p>
+</div>
+
+<div class="card">
+<h2>Pins to leave alone</h2>
+<table>
+  <tr><th>Pad</th><th>GPIO</th><th>Why</th></tr>
+  <tr><td>D3</td><td>7</td><td>Strapping pin — a pull-up here can change boot mode</td></tr>
+  <tr><td>D6 / D7</td><td>11 / 12</td><td>UART0</td></tr>
+  <tr><td>underside pads</td><td>2–5</td><td>JTAG</td></tr>
+</table>
+<p class="note">D1, D8, D9 and D10 are free — the firmware doesn't touch them.</p>
+</div>
+
+<div class="warn">
+<b>Keep the wires short.</b> The PN532 gets unreliable past roughly 15 cm of
+dupont wire. If the reader drops in and out once it's in the drybox, wire length
+and antenna placement are the first two things to look at — not the firmware.
+</div>
+
+<p class="note" style="text-align:center;margin-top:24px">
+Pin positions on the PN532 vary between clones — match the <b>silkscreen labels</b>,
+not the order drawn here. The XIAO's pad layout is exact.
+</p>
+
+</main>
+</body></html>

@@ -1,0 +1,694 @@
+<title>PN532 Solder Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F1F4F7;
+    --surface:    #FFFFFF;
+    --surface-2:  #E7ECF1;
+    --ink:        #16243A;
+    --ink-soft:   #4A5A70;
+    --ink-faint:  #7C8CA0;
+    --rule:       #CFD9E2;
+    --rule-soft:  #E1E8EE;
+    --schematic:  #1E4E7C;
+    --copper:     #A85B2B;
+    --copper-dim: #F0E2D6;
+    --danger:     #A32C2C;
+    --danger-dim: #F5DEDE;
+    --good:       #2F6B4F;
+    --good-dim:   #DCEAE2;
+    --shadow: 0 1px 2px rgba(22,36,58,.06), 0 8px 24px -12px rgba(22,36,58,.18);
+
+    --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+    --step-0:  clamp(1rem, .97rem + .15vw, 1.075rem);
+    --step-1:  clamp(1.2rem, 1.12rem + .38vw, 1.42rem);
+    --step-2:  clamp(1.5rem, 1.34rem + .78vw, 2rem);
+    --step-3:  clamp(1.95rem, 1.6rem + 1.7vw, 3rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0F151C;
+      --surface:    #161F29;
+      --surface-2:  #1E2937;
+      --ink:        #DFE7EF;
+      --ink-soft:   #A3B1C2;
+      --ink-faint:  #74849A;
+      --rule:       #2C3949;
+      --rule-soft:  #222E3C;
+      --schematic:  #74B0E2;
+      --copper:     #DB9059;
+      --copper-dim: #33241A;
+      --danger:     #E0827F;
+      --danger-dim: #351E1E;
+      --good:       #6FBE95;
+      --good-dim:   #17291F;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0F151C;
+    --surface:    #161F29;
+    --surface-2:  #1E2937;
+    --ink:        #DFE7EF;
+    --ink-soft:   #A3B1C2;
+    --ink-faint:  #74849A;
+    --rule:       #2C3949;
+    --rule-soft:  #222E3C;
+    --schematic:  #74B0E2;
+    --copper:     #DB9059;
+    --copper-dim: #33241A;
+    --danger:     #E0827F;
+    --danger-dim: #351E1E;
+    --good:       #6FBE95;
+    --good-dim:   #17291F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 58rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 1rem + 2vw, 3.5rem) clamp(1.1rem, .6rem + 2vw, 2rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.25rem, 1.8rem + 1.6vw, 3.25rem);
+  }
+
+  .mast { display: flex; flex-direction: column; gap: .85rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: baseline;
+  }
+  .eyebrow .sep { color: var(--ink-faint); }
+
+  h1 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 700; font-size: var(--step-3); line-height: 1.04;
+    letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: var(--step-1); line-height: 1.45; color: var(--ink-soft);
+    margin: 0; max-width: 44ch; text-wrap: pretty;
+  }
+  .mast-rule {
+    height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--copper) 0 22%, var(--rule) 22% 100%);
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+
+  h2 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 600; font-size: var(--step-2); line-height: 1.15;
+    letter-spacing: -.015em; margin: 0; text-wrap: balance;
+    display: flex; align-items: baseline; gap: .7rem;
+  }
+  h2::after {
+    content: ""; flex: 1; height: 1px; background: var(--rule);
+    transform: translateY(-.28em);
+  }
+
+  p { margin: 0; max-width: 68ch; text-wrap: pretty; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .92em; font-variant-numeric: tabular-nums;
+    background: var(--surface-2); padding: .1em .38em; border-radius: 3px;
+  }
+
+  a { color: var(--schematic); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--copper); outline-offset: 3px; border-radius: 2px; }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: .65rem; }
+  .figbox {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: clamp(.9rem, .6rem + 1vw, 1.5rem); overflow-x: auto; box-shadow: var(--shadow);
+  }
+  .figbox svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption { font-size: var(--step--1); color: var(--ink-soft); max-width: 70ch; line-height: 1.55; }
+  figcaption strong { color: var(--ink); }
+
+  .note {
+    border-left: 3px solid var(--copper); background: var(--surface);
+    padding: .85rem 1.05rem; border-radius: 0 4px 4px 0;
+    display: flex; flex-direction: column; gap: .4rem;
+  }
+  .note.warn { border-left-color: var(--danger); }
+  .note .h {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--copper);
+  }
+  .note.warn .h { color: var(--danger); }
+  .note p { font-size: var(--step--1); line-height: 1.55; }
+
+  .strip {
+    display: grid; gap: .8rem;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+  .chip {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: .8rem .9rem; display: flex; flex-direction: column; gap: .2rem;
+  }
+  .chip .k {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .chip .v {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step-0); font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .chip .n { font-size: var(--step--1); color: var(--ink-soft); }
+</style>
+<style>
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex;
+             flex-direction: column; gap: 1.6rem; counter-reset: s; }
+  ol.steps > li { counter-increment: s; display: grid;
+                  grid-template-columns: 2.1rem 1fr; gap: .35rem 1rem; align-items: start; }
+  ol.steps > li::before {
+    content: counter(s, decimal-leading-zero);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .82rem; font-weight: 600; color: var(--copper);
+    padding-top: .22em; border-top: 2px solid var(--copper); letter-spacing: .04em;
+  }
+  ol.steps .body { display: flex; flex-direction: column; gap: .55rem; }
+  ol.steps h3 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 600; font-size: var(--step-1); letter-spacing: -.01em;
+    margin: 0 0 .1rem; text-wrap: balance;
+  }
+  ol.steps p { max-width: 62ch; }
+  .tscroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px;
+             background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+  th, td { text-align: left; padding: .7rem .85rem;
+           border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .7rem;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--surface-2);
+    border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.val { font-family: "IBM Plex Mono", ui-monospace, monospace;
+           font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
+  ul.plain { margin: 0; padding-left: 1.15rem; display: flex;
+             flex-direction: column; gap: .45rem; }
+  ul.plain li { max-width: 66ch; }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">
+      <span>Solder guide</span><span class="sep">/</span>
+      <span>2 joints per module</span><span class="sep">/</span>
+      <span>~10 min per box</span>
+    </div>
+    <h1>PN532 Solder Guide</h1>
+    <p class="standfirst">Four joints, two pins, one mistake that costs a module.
+      What the board looks like from the side you will actually be working on.</p>
+    <div class="mast-rule"></div>
+  </header>
+
+  <section>
+    <h2>Before the iron is hot</h2>
+    <p>Both capacitors go across the <strong>same two pins</strong> — VCC and GND — on
+      the underside of the module, where the header pins come through the board. Nothing
+      else on the module is touched, and the dupont wires stay plugged in on the other
+      side.</p>
+
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Item</th><th>Spec</th><th>Why this one</th></tr></thead>
+        <tbody>
+          <tr><td>Electrolytic</td><td class="val">100 µF / 16 V<br>2.5 mm lead pitch</td>
+              <td>2.5 mm is the same pitch as the header, so the legs drop straight onto
+                  two adjacent pins with no bending at all. Worth choosing deliberately.</td></tr>
+          <tr><td>Ceramic</td><td class="val">0.1 µF / 50 V<br>marked <code>104</code></td>
+              <td>Not polarised. Legs bend easily to any spacing.</td></tr>
+          <tr><td>Iron</td><td class="val">~320 °C<br>fine conical or 2 mm chisel</td>
+              <td>Hotter and quicker beats cooler and longer — less total heat reaches
+                  the electrolytic.</td></tr>
+          <tr><td>Solder</td><td class="val">0.6–0.8 mm<br>rosin core</td>
+              <td>Thick solder floods the joint before it is hot enough to wet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="h">Either header — and the free pins are the easy ones</span>
+      <p>The V3 module carries VCC and GND on <em>both</em> headers: the 4-pin (GND, VCC,
+        SDA, SCL) and the 8-pin (SCK, MISO, MOSI, SS, VCC, GND, IRQ, RSTO). One power net on
+        one small board, so the capacitors work from either.</p>
+      <p><b>If your supply wires land on one header, put the capacitors on the other one's
+        unused VCC/GND pins.</b> That is the easier job by a distance: no dupont housing in
+        the way of the iron, no plastic to melt, no reheating a joint that is already
+        carrying the supply, and far less chance of bridging or lifting anything. On the
+        4-pin header GND and VCC sit next to each other at 2.54&nbsp;mm, which is exactly the
+        lead pitch to buy.</p>
+      <p>The electrical cost is a couple of centimetres of PCB trace — on the order of
+        30&nbsp;nH against the 150&nbsp;nH-plus of dupont you are fixing. It is a rounding
+        error on the thing that is actually wrong.</p>
+      <p>Confirm the two headers really are one net in ten seconds: meter on continuity, one
+        probe on each header's VCC pin, then the same for GND. Both should beep.</p>
+    </div>
+
+    <div class="note">
+      <span class="h">Do this to one module first</span>
+      <p>Fit one box, run it for a day, confirm the reset counter stays at zero, and only
+        then do the other seven. If the pilot still misbehaves the fault is upstream of
+        anything a capacitor fixes — almost always the USB cable or supply — and you will
+        have spent ten minutes rather than an afternoon finding that out.</p>
+    </div>
+  </section>
+
+  <!-- ===================== FIG 1 — MIRRORING ===================== -->
+  <section>
+    <h2>The mistake that costs a module</h2>
+    <p>You will be soldering on the back of the board, and the pin order
+      <em>reverses</em> when you turn it over. Almost every reversed-capacitor story starts
+      here: the pins were identified from the top, the board was flipped, and the legs went
+      into what were now the wrong two holes.</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 620 300" width="620" role="img"
+             aria-label="The same PN532 header seen from the component side and from the solder side. Reading left to right the pins are GND, VCC, SDA, SCL from the top, but VCC, GND reversed order from underneath, because flipping the board left-to-right mirrors the pin order. Identify VCC and GND from the silkscreen on the top, then mark the underside before turning the board over.">
+          <defs>
+            <marker id="s1" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+              <path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--ink-faint)"/>
+            </marker>
+          </defs>
+
+          <!-- ---------- component side ---------- -->
+          <text x="20" y="26" font-family="IBM Plex Mono, monospace" font-size="11"
+                font-weight="600" letter-spacing="1.4" fill="var(--ink-faint)">COMPONENT SIDE</text>
+          <text x="20" y="43" font-family="IBM Plex Sans, sans-serif" font-size="12"
+                fill="var(--ink-soft)">silkscreen, wires plugged in</text>
+
+          <rect x="20" y="58" width="240" height="92" rx="6"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="1.8"/>
+
+          <circle cx="56"  cy="118" r="10" fill="none" stroke="var(--copper)" stroke-width="3"/>
+          <circle cx="56"  cy="118" r="3"  fill="var(--copper)"/>
+          <text x="56" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="12" font-weight="600" fill="var(--copper)">GND</text>
+
+          <circle cx="116" cy="118" r="10" fill="none" stroke="var(--schematic)" stroke-width="3"/>
+          <circle cx="116" cy="118" r="3"  fill="var(--schematic)"/>
+          <text x="116" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="12" font-weight="600" fill="var(--schematic)">VCC</text>
+
+          <circle cx="176" cy="118" r="8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/>
+          <text x="176" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">SDA</text>
+          <circle cx="230" cy="118" r="8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/>
+          <text x="230" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">SCL</text>
+
+          <text x="140" y="172" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" fill="var(--ink-faint)">reading left to right</text>
+
+          <!-- ---------- flip arrow ---------- -->
+          <path d="M286 100 C 316 78, 336 78, 358 100" fill="none"
+                stroke="var(--ink-faint)" stroke-width="1.8" marker-end="url(#s1)"/>
+          <text x="322" y="70" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" font-weight="600" fill="var(--ink-soft)">flip</text>
+          <text x="322" y="128" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11" fill="var(--ink-faint)">left ↔ right</text>
+
+          <!-- ---------- solder side ---------- -->
+          <text x="380" y="26" font-family="IBM Plex Mono, monospace" font-size="11"
+                font-weight="600" letter-spacing="1.4" fill="var(--danger)">SOLDER SIDE</text>
+          <text x="380" y="43" font-family="IBM Plex Sans, sans-serif" font-size="12"
+                fill="var(--ink-soft)">no silkscreen, order reversed</text>
+
+          <rect x="380" y="58" width="220" height="92" rx="6"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="1.8"
+                stroke-dasharray="0"/>
+
+          <circle cx="410" cy="118" r="8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/>
+          <text x="410" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">SCL</text>
+          <circle cx="464" cy="118" r="8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/>
+          <text x="464" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">SDA</text>
+
+          <circle cx="522" cy="118" r="10" fill="none" stroke="var(--schematic)" stroke-width="3"/>
+          <circle cx="522" cy="118" r="3"  fill="var(--schematic)"/>
+          <text x="522" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="12" font-weight="600" fill="var(--schematic)">VCC</text>
+
+          <circle cx="576" cy="118" r="10" fill="none" stroke="var(--copper)" stroke-width="3"/>
+          <circle cx="576" cy="118" r="3"  fill="var(--copper)"/>
+          <text x="576" y="97" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="12" font-weight="600" fill="var(--copper)">GND</text>
+
+          <text x="490" y="172" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" fill="var(--danger)">GND is now on the right</text>
+
+          <!-- ---------- the fix ---------- -->
+          <rect x="20" y="200" width="580" height="82" rx="5"
+                fill="var(--copper-dim)" stroke="var(--copper)" stroke-width="1.6"/>
+          <text x="40" y="228" font-family="IBM Plex Sans, sans-serif" font-size="13"
+                font-weight="600" fill="var(--copper)">Mark it before you flip it.</text>
+          <text x="40" y="250" font-family="IBM Plex Sans, sans-serif" font-size="12.5"
+                fill="var(--ink-soft)">Identify VCC and GND from the silkscreen, then put a dot of</text>
+          <text x="40" y="269" font-family="IBM Plex Sans, sans-serif" font-size="12.5"
+                fill="var(--ink-soft)">marker pen on the GND pad on the underside. Then turn the board over.</text>
+        </svg>
+      </div>
+      <figcaption><strong>Mark the underside while the labels are still in front of you.</strong>
+        The illustration uses the 4-pin header; the same reversal applies to the 8-pin one.
+        A dot of permanent marker on the GND pad takes three seconds and removes the only
+        step in this job where a mistake destroys a part.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Three capacitors, two pins</h2>
+    <p>They all go across the same VCC and GND — in parallel is the whole point, and any
+      other arrangement is wrong. But "the same node" and "the same hole" are different
+      things, and the second one will not physically work.</p>
+    <p>A 2.54&nbsp;mm plated through-hole takes one component lead and the solder to wet it.
+      Two is a squeeze. Three will crack the plating or lift the pad, and if you widen the
+      hole to make room you have destroyed the barrel that connects the two sides of the
+      board. Pick one of these instead:</p>
+
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Approach</th><th>How</th><th>Best when</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Split across the two headers</b></td>
+            <td>Electrolytic on one header's free VCC/GND, the two ceramics on the other's.
+                Same net, so still parallel.</td>
+            <td><b>Your case.</b> Both headers are free of wires on one pair each, and it
+                spreads the mechanical load.</td>
+          </tr>
+          <tr>
+            <td>Bundle the legs</td>
+            <td>Twist the two positive leads together and the two negative leads together
+                <em>before</em> soldering, then make one joint per side.</td>
+            <td>Two parts into one pair of holes. Clean and strong.</td>
+          </tr>
+          <tr>
+            <td>Stack on the pin</td>
+            <td>Solder the first part, then solder the next part's leg to the first one's
+                leg just above the joint.</td>
+            <td>Adding a capacitor to a module you have already done.</td>
+          </tr>
+          <tr>
+            <td>SMD across the pins</td>
+            <td>A 1206 X7R lies flat and bridges two adjacent pins. Uses no hole at all.</td>
+            <td>The 10&nbsp;µF, and it frees a hole for the others.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="h">Order, if you are being fussy</span>
+      <p>The 0.1&nbsp;µF wants to be nearest the module and the bulky electrolytic furthest —
+        smallest and fastest closest to the load is the usual rule. At this scale, with
+        everything within a couple of centimetres on the same board, the difference is
+        small; do not contort the build for it. Mechanical soundness is worth more here than
+        a millimetre of lead length.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="h">These boxes vibrate</span>
+      <p>Three components hanging off two joints is a fatigue risk in a drybox with a spool
+        rolling around in it. Whatever arrangement you pick, keep the leads short, sleeve
+        anything bare, and anchor the electrolytic's can with a dab of hot glue so its mass
+        is not being carried by the solder joints alone.</p>
+    </div>
+  </section>
+
+  <!-- ===================== FIG 2 — THE JOINT ===================== -->
+  <section>
+    <h2>What a joint should look like</h2>
+    <p>The whole technique is one idea: <strong>heat the metal, then feed solder into the
+      metal.</strong> Solder melted on the iron and wiped onto a cold pin looks like a joint
+      and conducts like a rumour.</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 620 250" width="620" role="img"
+             aria-label="Cross-sections of three solder joints. A good joint is a shiny concave fillet flowing onto both the pin and the pad. A cold joint is a dull ball sitting on top without wetting the pad. A bridge is solder spanning two adjacent pins, which shorts VCC to GND.">
+          <!-- ---- good ---- -->
+          <text x="12" y="20" font-family="IBM Plex Mono, monospace" font-size="11"
+                font-weight="600" letter-spacing="1.2" fill="var(--good)">GOOD</text>
+          <rect x="12" y="120" width="170" height="16" fill="var(--surface-2)"
+                stroke="var(--ink-soft)" stroke-width="1.4"/>
+          <rect x="88" y="52" width="10" height="68" fill="var(--ink-soft)"/>
+          <path d="M62 120 Q 93 78 124 120 Z" fill="var(--good)" opacity=".85"/>
+          <path d="M62 120 Q 93 78 124 120" fill="none" stroke="var(--good)" stroke-width="2"/>
+          <text x="97" y="160" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" font-weight="600" fill="var(--good)">concave fillet</text>
+          <text x="97" y="178" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">shiny, flows onto</text>
+          <text x="97" y="194" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">pin AND pad</text>
+          <text x="97" y="218" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">2–3 s</text>
+
+          <!-- ---- cold ---- -->
+          <text x="228" y="20" font-family="IBM Plex Mono, monospace" font-size="11"
+                font-weight="600" letter-spacing="1.2" fill="var(--danger)">COLD</text>
+          <rect x="228" y="120" width="170" height="16" fill="var(--surface-2)"
+                stroke="var(--ink-soft)" stroke-width="1.4"/>
+          <rect x="304" y="52" width="10" height="68" fill="var(--ink-soft)"/>
+          <circle cx="309" cy="104" r="24" fill="var(--danger)" opacity=".45"/>
+          <circle cx="309" cy="104" r="24" fill="none" stroke="var(--danger)" stroke-width="2"/>
+          <text x="313" y="160" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" font-weight="600" fill="var(--danger)">a ball on top</text>
+          <text x="313" y="178" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">dull, never wet the</text>
+          <text x="313" y="194" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">pad. Reheat it.</text>
+          <text x="313" y="218" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--ink-faint)">iron was too cool</text>
+
+          <!-- ---- bridge ---- -->
+          <text x="444" y="20" font-family="IBM Plex Mono, monospace" font-size="11"
+                font-weight="600" letter-spacing="1.2" fill="var(--danger)">BRIDGE</text>
+          <rect x="444" y="120" width="164" height="16" fill="var(--surface-2)"
+                stroke="var(--ink-soft)" stroke-width="1.4"/>
+          <rect x="492" y="52" width="10" height="68" fill="var(--ink-soft)"/>
+          <rect x="552" y="52" width="10" height="68" fill="var(--ink-soft)"/>
+          <path d="M474 120 Q 527 84 580 120 Z" fill="var(--danger)" opacity=".7"/>
+          <path d="M474 120 Q 527 84 580 120" fill="none" stroke="var(--danger)" stroke-width="2"/>
+          <text x="527" y="160" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="12" font-weight="600" fill="var(--danger)">VCC shorted to GND</text>
+          <text x="527" y="178" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">the one fault that can</text>
+          <text x="527" y="194" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="11.5" fill="var(--ink-soft)">take the board with it</text>
+          <text x="527" y="218" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="var(--danger)">wick it off</text>
+        </svg>
+      </div>
+      <figcaption><strong>VCC and GND are 2.54 mm apart, and a bridge between them is a dead
+        short across the supply.</strong> That is why the continuity check in step 6 happens
+        before power, not after. Solder wick or a quick drag with a clean hot tip lifts a
+        bridge off easily.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== FIG 3 — IRON TECHNIQUE ===================== -->
+  <section>
+    <h2>Where the iron goes</h2>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 620 230" width="620" role="img"
+             aria-label="Side view of the iron tip bridging the pin and the pad at about forty-five degrees, with the solder wire fed into the opposite side of the joint, not onto the iron. The capacitor body sits on the far side of the board and must not be heated.">
+          <defs>
+            <marker id="s2" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+              <path d="M0,1.5 L9,5 L0,8.5 z" fill="var(--copper)"/>
+            </marker>
+          </defs>
+
+          <!-- board -->
+          <rect x="140" y="130" width="360" height="18" fill="var(--surface-2)"
+                stroke="var(--ink-soft)" stroke-width="1.6"/>
+          <text x="150" y="168" font-family="IBM Plex Sans, sans-serif" font-size="12"
+                fill="var(--ink-faint)">PN532 board</text>
+
+          <!-- pin through the board -->
+          <rect x="312" y="72" width="10" height="58" fill="var(--ink-soft)"/>
+          <text x="330" y="88" font-family="IBM Plex Mono, monospace" font-size="12"
+                fill="var(--ink-soft)">capacitor leg</text>
+
+          <!-- pad + fillet -->
+          <rect x="290" y="126" width="54" height="6" fill="var(--copper)" opacity=".55"/>
+          <path d="M296 126 Q 317 100 338 126 Z" fill="var(--good)" opacity=".8"/>
+
+          <!-- iron tip -->
+          <path d="M196 40 L246 40 L306 112 L286 126 Z"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="1.8"/>
+          <path d="M286 126 L306 112 L296 104 L276 118 Z" fill="var(--danger)" opacity=".8"/>
+          <text x="196" y="32" font-family="IBM Plex Sans, sans-serif" font-size="12"
+                font-weight="600" fill="var(--ink)">iron, ~45°</text>
+          <text x="150" y="52" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">tip touches</text>
+          <text x="150" y="68" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">leg + pad</text>
+          <text x="150" y="84" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">at once</text>
+
+          <!-- solder wire -->
+          <line x1="470" y1="60" x2="352" y2="116" stroke="var(--copper)"
+                stroke-width="3.5" marker-end="url(#s2)"/>
+          <text x="476" y="56" font-family="IBM Plex Sans, sans-serif" font-size="12"
+                font-weight="600" fill="var(--copper)">solder</text>
+          <text x="476" y="74" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">fed into the far</text>
+          <text x="476" y="90" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">side of the joint —</text>
+          <text x="476" y="106" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">never onto the iron</text>
+
+          <!-- capacitor on the other side -->
+          <rect x="286" y="182" width="62" height="34" rx="7"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="1.6"/>
+          <rect x="286" y="182" width="17" height="34" rx="7" fill="var(--copper)" opacity=".9"/>
+          <line x1="317" y1="148" x2="317" y2="182" stroke="var(--ink-soft)" stroke-width="2.6"/>
+          <text x="360" y="204" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+                fill="var(--ink-soft)">capacitor body — keep the iron off it</text>
+        </svg>
+      </div>
+      <figcaption>Solder fed onto the iron arrives without flux and stone cold at the pad.
+        Fed into the joint, it melts on contact and pulls itself in. If it beads up and
+        refuses to flow, the joint is not hot enough — take the iron away, let it cool, and
+        start again rather than holding on.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== THE SEQUENCE ===================== -->
+  <section>
+    <h2>The eight minutes</h2>
+
+    <ol class="steps">
+      <li><div class="body">
+        <h3>Unplug the box</h3>
+        <p>At the wall, not just at the board. The rail you are about to bridge is the one
+          you are trying to fix.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Mark GND on the underside</h3>
+        <p>Read VCC and GND off the silkscreen on the component side, then dot the
+          <strong>GND</strong> pad on the back with marker pen. Now turn the board over.
+          This is the step that stops the reversed-electrolytic story.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Trim both capacitors to about 8 mm</h3>
+        <p>Long legs add inductance, which is the exact thing the capacitor is there to
+          defeat. A tidy capacitor on long leads is worse than an untidy one sitting flush.
+          A 2.5 mm-pitch electrolytic needs no bending at all — its legs land straight on
+          two adjacent header pins.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Ceramic first</h3>
+        <p>Either way round; it is not polarised. Hook a leg against each pin, heat the pin
+          and the pad together for two or three seconds, feed solder into the far side of
+          the joint, then remove the solder and the iron in that order. Repeat for the
+          second leg.</p>
+        <p>The ceramic goes on first because it is the flatter of the two — put the tall
+          electrolytic on first and it stands in the way of the iron.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Electrolytic second — stripe leg to your mark</h3>
+        <p>The striped side is negative and goes to GND, the pad you dotted. Check it, then
+          check it again, then solder. Two or three seconds per joint: the leads tolerate
+          plenty of heat but the can does not enjoy it.</p>
+        <div class="note warn">
+          <span class="h">Backwards is not a mistake you can undo</span>
+          <p>A reversed electrolytic vents — loudly, once — and can take the module with it.
+            Two markings agree so you can check yourself twice: the printed stripe is the
+            negative side, and on an untrimmed part the negative leg is the shorter one. If
+            somebody already trimmed the legs, trust the stripe.</p>
+        </div>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Test for a short — before any power</h3>
+        <p>Meter on continuity or the lowest resistance range, one probe on VCC and one on
+          GND. You should watch the reading <em>climb</em> as the capacitor charges, then
+          settle high. A steady beep, or a reading that sits near zero and stays there, is
+          a bridge — find it before you plug anything in.</p>
+        <p>If the meter beeps briefly and then goes quiet, that is the capacitor charging,
+          not a fault. Reverse the probes and it will do it again.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Sleeve anything bare</h3>
+        <p>Heat-shrink over any leg that could touch something once the box is closed and
+          moving. A drybox is a vibrating environment with a spool rolling around in it.</p>
+      </div></li>
+
+      <li><div class="body">
+        <h3>Power up and watch the console</h3>
+        <p>You want the banner, then <code>Reader 1 on I2C0 ready (PN532 fw 1.6)</code>, and
+          no <code>259</code> errors. Then leave the box running normally for a working day
+          and check the reset counter on the Reader pill. Zero is the result you are after.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>If you would rather not solder on the module</h2>
+    <p>Eight modules is eight chances to lift a pad, and a lifted pad on a PN532 is not
+      worth the fifteen minutes saved. There is a reasonable alternative: solder both
+      capacitors onto a short two-way <strong>female dupont header</strong> instead, and
+      piggyback that onto the module's VCC and GND pins alongside the existing wires.</p>
+    <ul class="plain">
+      <li>Electrically almost as good — the capacitors still sit a few millimetres from the
+        module, which is what matters.</li>
+      <li>Completely reversible, and you can build all eight on the bench before touching
+        a single drybox.</li>
+      <li>The cost is one more mechanical connection per rail, so seat it firmly and give it
+        a tug before closing the box.</li>
+    </ul>
+    <p>What does <em>not</em> work is putting the capacitors at the other end of the loom,
+      next to the XIAO. That is the end of the wire the problem is already being solved at;
+      the whole point is to have the reservoir at the far end, next to the load.</p>
+  </section>
+
+  <div class="note">
+    <span class="h">The rest of the job</span>
+    <p>Parts list, quantities for eight boxes and the power-budget reasoning are on the
+      <a href="capacitors.html">Drybox Capacitor Retrofit</a> page; the failure mechanism
+      and the pilot-then-batch order are drawn on the
+      <a href="capacitor-fitting.html">Capacitor Bench Walkthrough</a>.</p>
+  </div>
+
+</div>

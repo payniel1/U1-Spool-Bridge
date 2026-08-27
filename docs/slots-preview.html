@@ -1,0 +1,208 @@
+<title>Slot Readback Card</title>
+
+<style>
+  /* ---------------------------------------------------------------------
+     Tokens lifted verbatim from include/web_page.h so this preview renders
+     exactly what the firmware renders. Do not "improve" them here — if they
+     drift, the preview stops being evidence.
+     --------------------------------------------------------------------- */
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --line:#2a3441;
+    --fg:#e6edf3; --dim:#8b98a5; --accent:#4f9dff; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+    --r:12px;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:0 0 56px;-webkit-font-smoothing:antialiased}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  .hint{font-size:12px;color:var(--dim);margin:10px 0 0}
+  button{background:var(--accent);border:none;color:#04101f;font:inherit;font-weight:600;
+    padding:11px 18px;border-radius:9px;cursor:pointer;transition:.12s}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+  button:hover{filter:brightness(1.1)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* the card's own rules, also verbatim */
+  .sl{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line)}
+  .sl:last-child{border-bottom:none}
+  .sl .n{font:600 12px ui-monospace,SFMono-Regular,monospace;color:var(--dim);width:46px;flex:none}
+  .sl .chip{width:22px;height:22px;border-radius:6px;flex:none;border:1px solid var(--line)}
+  .sl .t{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden}
+  .sl .t b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sl .t b{font-size:13.5px}
+  .sl .t span{font-size:11.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sl .mine{margin-left:auto;flex:none;font:600 10px ui-monospace,SFMono-Regular,monospace;
+            letter-spacing:.06em;padding:2px 7px;border-radius:4px;
+            background:#12331f;color:#5bd68a;border:1px solid #1e5433}
+
+  /* ---- preview scaffolding, kept quiet so the card is the loud thing ---- */
+  .wrap{max-width:46rem;margin:0 auto;padding:36px 16px 0;
+        display:flex;flex-direction:column;gap:34px}
+
+  .lede h1{font:600 21px/1.2 system-ui,sans-serif;margin:0 0 6px;letter-spacing:-.01em}
+  .lede p{margin:0;color:var(--dim);font-size:13.5px;max-width:62ch}
+  .lede code{font:12.5px ui-monospace,SFMono-Regular,monospace;
+             background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--fg)}
+
+  .state{display:flex;flex-direction:column;gap:9px}
+  .state .lbl{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .state .lbl b{font:600 11px ui-monospace,SFMono-Regular,monospace;
+                letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+  .state .lbl span{font-size:12.5px;color:var(--dim)}
+
+  .head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .head h2{margin:0;font:600 16px system-ui,sans-serif}
+  .head button{margin-left:auto;padding:5px 12px;font-size:12px}
+
+  .note{border-left:2px solid var(--line);padding:2px 0 2px 13px;
+        color:var(--dim);font-size:12.5px;display:flex;flex-direction:column;gap:7px}
+  .note b{color:var(--fg);font-weight:600}
+  .note code{font:12px ui-monospace,SFMono-Regular,monospace;color:var(--fg)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <div class="lede">
+    <h1>Loaded in the printer</h1>
+    <p>Rendered by the firmware's own <code>paintLoaded()</code> and stylesheet, pasted in
+      unchanged, driven by representative <code>filament_detect</code> responses. What you
+      see below is what the board draws — not a mock of it.</p>
+  </div>
+
+  <!-- 1. the normal case -->
+  <div class="state">
+    <div class="lbl"><b>Normal</b><span>your printer, as it reports itself</span></div>
+    <section class="card">
+      <div class="head">
+        <h2>Loaded in the printer</h2>
+        <button class="ghost" type="button">Refresh</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">What the printer itself reports, read back from
+        the same object this box writes to. It keeps showing after the spool has left the
+        reader.</p>
+      <div id="slots-normal"></div>
+    </section>
+    <div class="note">
+      <span><b>SLOT 1</b> is empty. The printer fills unpopulated fields with the literal
+        string <code>NONE</code> rather than leaving them blank, which is why an earlier build
+        rendered this row as &ldquo;NONE NONE NONE&rdquo;.</span>
+      <span><b>SLOT 2</b> carries a <code>CARD_UID</code> this box has read, so it is claimed.
+        Across eight dryboxes that badge is how you tell which one fed which slot.</span>
+      <span><b>SLOTS 3 and 4</b> were written by other boxes — same data, no badge.</span>
+    </div>
+  </div>
+
+  <!-- 2. stock firmware -->
+  <div class="state">
+    <div class="lbl"><b>Stock firmware</b><span><code>filament_detect</code> is not exposed</span></div>
+    <section class="card">
+      <div class="head">
+        <h2>Loaded in the printer</h2>
+        <button class="ghost" type="button">Refresh</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">What the printer itself reports, read back from
+        the same object this box writes to. It keeps showing after the spool has left the
+        reader.</p>
+      <div id="slots-stock"></div>
+    </section>
+    <div class="note">
+      <span>Occupancy still works, because it comes from <code>print_task_config</code>,
+        which stock does expose. The card degrades to what it can actually know rather than
+        showing nothing.</span>
+    </div>
+  </div>
+
+  <!-- 3. cold start -->
+  <div class="state">
+    <div class="lbl"><b>Before the first fetch</b><span>or no printer host set</span></div>
+    <section class="card">
+      <div class="head">
+        <h2>Loaded in the printer</h2>
+        <button class="ghost" type="button">Refresh</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">What the printer itself reports, read back from
+        the same object this box writes to. It keeps showing after the spool has left the
+        reader.</p>
+      <div id="slots-cold"></div>
+    </section>
+  </div>
+
+  <div class="note">
+    <span><b>When it refreshes.</b> Every 15 s, and immediately after a send, after a slot's
+      occupancy changes, or on <em>Refresh</em>. The timer is only a backstop for changes made
+      at the machine itself.</span>
+    <span><b>One request.</b> <code>?print_task_config&amp;filament_detect</code> fetches both
+      objects, parsed through an ArduinoJson filter down to the eleven fields shown, so a
+      four-channel blob never becomes the largest allocation on the board.</span>
+  </div>
+
+</div>
+
+<script>
+  // ---- verbatim from include/web_page.h ----
+  const $ = id => document.getElementById(id);
+  function hex(n){return "#"+(n&0xffffff).toString(16).padStart(6,"0");}
+
+  let slots=[], slotsKnown=false, slotsErr="";
+  const myUids=new Set();
+
+  function paintLoaded(el){
+    if(!el)return;
+    if(!slotsKnown&&!slots.length){
+      el.innerHTML=`<p class="hint">${slotsErr||"waiting for the printer…"}</p>`;return;
+    }
+    el.innerHTML="";
+    slots.forEach(s=>{
+      const d=document.createElement("div"); d.className="sl";
+      const val=v=>{const t=(v||"").trim();return /^none$/i.test(t)?"":t;};
+      const mt=val(s.mainType), vn=val(s.vendor), st=val(s.subType);
+      const known=s.known&&mt;
+      const label=known?[vn||"Generic",mt,st].filter(Boolean).join(" ")
+                       :(s.present?"loaded — no filament data":"empty");
+      const temps=known&&s.hotendMax
+          ?`${s.hotendMin}–${s.hotendMax}°C nozzle · ${s.bedTemp}°C bed`:"";
+      const uid=s.uid?`UID ${s.uid}`:"";
+      const sub=[temps,uid].filter(Boolean).join("  ·  ");
+      const sw=known?`style="background:${hex(s.rgb||0)}"`
+                    :`style="background:transparent;border-style:dashed"`;
+      d.innerHTML=`<span class="n">SLOT ${s.n}</span>`
+        +`<span class="chip" ${sw}></span>`
+        +`<span class="t"><b>${label}</b>${sub?`<span>${sub}</span>`:""}</span>`
+        +(s.uid&&myUids.has(s.uid.toUpperCase())?`<span class="mine">THIS BOX</span>`:"");
+      el.appendChild(d);
+    });
+    if(slotsErr)el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
+  }
+
+  // ---- representative payloads ----
+  myUids.add("042312FD400289");
+
+  slots=[
+    {n:1,present:false,known:true, vendor:"NONE", mainType:"NONE", subType:"NONE"},
+    {n:2,present:true, known:true, vendor:"3D Fuel", mainType:"PCTG", subType:"Basic",
+     rgb:0xD8D8D8, hotendMin:220, hotendMax:240, bedTemp:70, uid:"042312FD400289"},
+    {n:3,present:true, known:true, vendor:"fusion", mainType:"PLA", subType:"Basic",
+     rgb:0xF2F2F2, hotendMin:180, hotendMax:200, bedTemp:40, uid:"04E34EE63A0289"},
+    {n:4,present:true, known:true, vendor:"SUNLU", mainType:"PLA", subType:"Basic",
+     rgb:0x101010, hotendMin:180, hotendMax:200, bedTemp:40, uid:"04B1С7220A5E80"},
+  ];
+  slotsKnown=true; slotsErr="";
+  paintLoaded($("slots-normal"));
+
+  slots=[
+    {n:1,present:true, known:false},
+    {n:2,present:false,known:false},
+    {n:3,present:true, known:false},
+    {n:4,present:false,known:false},
+  ];
+  slotsKnown=true; slotsErr="filament_detect not exposed (stock firmware?)";
+  paintLoaded($("slots-stock"));
+
+  slots=[]; slotsKnown=false; slotsErr="";
+  paintLoaded($("slots-cold"));
+</script>

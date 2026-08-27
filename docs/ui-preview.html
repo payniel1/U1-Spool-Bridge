@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>U1 Spool Bridge — UI preview</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --line:#2a3441;
+  --fg:#e6edf3; --dim:#8b98a5; --accent:#4f9dff; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+  --r:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:0 0 40px;-webkit-font-smoothing:antialiased}
+header{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:16px;margin:0;font-weight:600;letter-spacing:-.01em}
+.pills{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.pill{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--panel2);
+  border:1px solid var(--line);color:var(--dim);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.dot.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.dot.off{background:var(--bad)}
+.dot.idle{background:var(--warn)}
+main{max-width:760px;margin:0 auto;padding:16px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+  margin:0 0 14px;font-weight:600}
+.spool{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+.swatch{width:60px;height:60px;border-radius:14px;flex:none;border:1px solid var(--line);
+  background:#333;box-shadow:inset 0 0 0 3px rgba(255,255,255,.06)}
+.spool .meta{min-width:0}
+.spool .name{font-size:18px;font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spool .sub{font-size:12px;color:var(--dim);margin-top:2px;font-family:ui-monospace,monospace}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:5px;
+  background:#1f3350;color:var(--accent);border:1px solid #2b4a72;
+  text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:5px}
+.badge.unk{background:#3a2a12;color:var(--warn);border-color:#5a4520}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px;
+  text-transform:uppercase;letter-spacing:.05em}
+input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+  border-radius:8px;padding:9px 10px;font:inherit;font-size:14px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+input[type=color]{padding:3px;height:38px;cursor:pointer}
+input[type=range]{padding:0;background:none;border:none}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 12px}
+.slot{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:12px 4px;text-align:center;cursor:pointer;font-weight:600;font-size:14px;
+  transition:.12s;user-select:none}
+.slot:hover{border-color:#3d4b5c}
+.slot.sel{background:#12304f;border-color:var(--accent);color:#cfe4ff}
+.slot.armed{border-color:var(--warn);background:#33270f;color:#f0c674}
+.slot small{display:block;font-size:9px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.06em;font-weight:500;margin-top:2px}
+.slot .occ{display:block;width:6px;height:6px;border-radius:50%;
+  background:var(--line);margin:5px auto 0}
+.slot .occ.on{background:var(--ok);box-shadow:0 0 5px var(--ok)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:9px 11px;border-radius:9px;background:var(--panel2);
+  border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:9px}
+.tab:hover{border-color:#3d4b5c}
+.tab.on{background:#12304f;border-color:var(--accent)}
+.tab .sw2{width:16px;height:16px;border-radius:5px;flex:none;border:1px solid var(--line);
+  background:repeating-linear-gradient(45deg,#222,#222 3px,#2c2c2c 3px,#2c2c2c 6px)}
+.tab .t{min-width:0}
+.tab b{display:block;font-size:13px;font-weight:600}
+.tab span{display:block;color:var(--dim);font-size:11px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gate{font-size:12.5px;color:var(--dim);margin:12px 0 0;line-height:1.45}
+.gate b{color:var(--fg);font-weight:600}
+.gate .idle{color:var(--warn)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{background:var(--accent);border:none;color:#04101f;font:inherit;font-weight:600;
+  padding:11px 18px;border-radius:9px;cursor:pointer;transition:.12s}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.4;cursor:not-allowed;filter:none}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);cursor:pointer}
+.toggle input{width:auto;accent-color:var(--accent)}
+#log{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;max-height:190px;
+  overflow-y:auto;display:flex;flex-direction:column-reverse;gap:2px}
+#log div{padding:3px 0;border-bottom:1px solid #1d242d;color:var(--dim);
+  white-space:pre-wrap;word-break:break-word}
+#log .ok{color:var(--ok)} #log .bad{color:var(--bad)} #log .warn{color:var(--warn)}
+details summary{cursor:pointer;font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--dim);font-weight:600;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"\25B8 ";display:inline-block;transition:.15s}
+details[open] summary::before{transform:rotate(90deg)}
+details[open] summary{margin-bottom:14px}
+.hint{font-size:12px;color:var(--dim);margin:10px 0 0}
+.sm{font-size:12px;color:var(--dim);margin-top:5px;display:flex;align-items:center;gap:8px}
+.chip{background:#13341f;color:#5ddc82;border:1px solid #1e5233;border-radius:5px;
+  padding:1px 7px;font-size:10.5px;font-weight:600;letter-spacing:.03em}
+.bar{flex:1;max-width:130px;height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;z-index:50;
+  align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;
+  width:100%;max-width:640px;max-height:82vh;display:flex;flex-direction:column;padding:16px}
+@media(min-width:700px){.modal{align-items:center}.sheet{border-radius:16px}}
+.sheet h3{margin:0 0 4px;font-size:16px}
+.sheet .hint{margin:0 0 12px}
+#splist{overflow-y:auto;flex:1;margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.sprow{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;
+  background:var(--panel2);border:1px solid var(--line);cursor:pointer}
+.sprow:hover{border-color:var(--accent)}
+.sprow .sw2{width:22px;height:22px;border-radius:6px;flex:none;border:1px solid var(--line)}
+.sprow .t{min-width:0;flex:1}
+.sprow .t b{display:block;font-size:13.5px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sprow .t span{font-size:11px;color:var(--dim)}
+.sprow em{font-style:normal;font-size:10px;color:var(--warn)}
+#fleet{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.peer{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 11px;display:flex;gap:9px;align-items:center;text-decoration:none;color:inherit}
+.peer:hover{border-color:var(--accent)}
+.peer .sw2{width:20px;height:20px;border-radius:6px;flex:none;border:1px solid var(--line)}
+.peer .t{min-width:0}
+.peer .t b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peer .t span{font-size:11px;color:var(--dim);display:block;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peer.empty .sw2{background:repeating-linear-gradient(45deg,#222,#222 4px,#2c2c2c 4px,#2c2c2c 8px)}
+.note{background:#3a2a12;border:1px solid #5a4520;color:#f0c674;border-radius:8px;
+  padding:9px 11px;font-size:12.5px;margin-bottom:14px;display:none}
+code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body>
+
+<header>
+  <h1 id="title">U1 Spool Bridge</h1>
+  <div class="pills">
+    <span class="pill"><i class="dot" id="d-rd"></i>Reader</span>
+    <span class="pill"><i class="dot" id="d-wf"></i><span id="t-wf">WiFi</span></span>
+    <span class="pill" id="p-band" hidden><i class="dot" id="d-bd"></i><span id="t-bd">Band</span></span>
+    <span class="pill"><i class="dot" id="d-pr"></i><span id="t-pr">Printer</span></span>
+    <span class="pill" id="p-sm" hidden><i class="dot" id="d-sm"></i>Spoolman</span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Scanned spool</h2>
+    <div class="tabs" id="tabs" hidden></div>
+    <div class="note" id="note"></div>
+    <div class="spool">
+      <div class="swatch" id="sw"></div>
+      <div class="meta">
+        <span class="badge" id="src">waiting</span>
+        <div class="name" id="nm">Present a tag to the PN532</div>
+        <div class="sub" id="uid">no tag</div>
+        <div class="sm" id="sm" hidden></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div><label>Vendor</label><input id="f-vendor" placeholder="Generic"></div>
+      <div><label>Material</label><select id="f-main"></select></div>
+      <div><label>Sub-type</label><select id="f-sub"></select></div>
+      <div><label>Colour</label><input type="color" id="f-color" value="#4f9dff"></div>
+      <div><label>Hotend min &deg;C</label><input type="number" id="f-hmin" min="140" max="400"></div>
+      <div><label>Hotend max &deg;C</label><input type="number" id="f-hmax" min="140" max="400"></div>
+      <div><label>Bed &deg;C</label><input type="number" id="f-bed" min="0" max="140"></div>
+      <div><label>Weight g</label><input type="number" id="f-weight" min="0" max="10000"></div>
+      <div><label>Alpha <span id="a-val">255</span></label>
+           <input type="range" id="f-alpha" min="0" max="255" value="255"></div>
+      <div><label>SKU</label><input type="number" id="f-sku" min="0"></div>
+    </div>
+
+    <div class="slots" id="slots"></div>
+
+    <div class="row">
+      <button id="send">Send to printer</button>
+      <button class="ghost" id="arm" hidden>Arm slot 1</button>
+      <button class="ghost" id="rescan">Re-scan tag</button>
+      <button class="ghost" id="link" hidden>Link to a Spoolman spool</button>
+      <select id="mode" style="width:auto;min-width:220px">
+        <option value="4">Send when a spool is inserted</option>
+        <option value="0">Send when a slot loads</option>
+        <option value="1">Send on every scan</option>
+        <option value="2">Send only when armed</option>
+        <option value="3">Manual only</option>
+      </select>
+    </div>
+    <p class="gate" id="gate"></p>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">Other boxes</h2>
+      <button class="ghost" id="refleet"
+              style="margin-left:auto;padding:5px 12px;font-size:12px">Refresh</button>
+    </div>
+    <div id="fleet"><p class="hint">Press refresh to find the other boxes on the network.</p></div>
+  </section>
+
+  <section class="card">
+    <h2>Firmware</h2>
+    <p class="hint" id="fwnow" style="margin-top:0"></p>
+    <div class="row" style="margin-top:12px">
+      <input type="file" id="fwfile" accept=".bin" style="flex:1;min-width:170px">
+      <button id="fwgo">Install</button>
+    </div>
+    <div class="bar" id="fwbarwrap" hidden style="max-width:none;margin-top:12px;height:7px">
+      <i id="fwbar" style="width:0%"></i>
+    </div>
+    <p class="hint" id="fwmsg"></p>
+  </section>
+
+  <section class="card">
+    <h2>Activity</h2>
+    <div id="log"></div>
+  </section>
+
+  <section class="card">
+    <details id="setpanel"><summary>Settings</summary>
+      <div class="grid">
+        <div><label>Box name</label><input id="s-box" placeholder="Drybox 3"></div>
+        <div><label>Printer host / IP</label><input id="s-host" placeholder="192.168.1.50"></div>
+        <div><label>Printer port</label><input type="number" id="s-port" value="80"></div>
+        <div><label>Moonraker API key</label><input id="s-key" type="password" placeholder="(unchanged)"></div>
+        <div><label>WiFi SSID</label><input id="s-ssid"></div>
+        <div><label>WiFi password</label><input id="s-pass" type="password" placeholder="(unchanged)"></div>
+        <div id="band-row" hidden><label>WiFi band</label><select id="s-band">
+          <option value="0">Auto (2.4 + 5 GHz)</option>
+          <option value="1">2.4 GHz only</option>
+          <option value="2">5 GHz only</option></select></div>
+        <div><label>Scan interval ms</label><input type="number" id="s-scan" min="100" max="5000"></div>
+        <div><label>Extra MIFARE keys</label><input id="s-keys" placeholder="FFFFFFFFFFFF,A0A1..."></div>
+        <div><label>Spoolman host / IP</label><input id="s-smhost" placeholder="192.168.1.20"></div>
+        <div><label>Spoolman port</label><input type="number" id="s-smport" value="7912"></div>
+        <div><label>Slot label</label><input id="s-locfmt" placeholder="U1 slot {slot}"></div>
+        <div><label>NTP server</label><input id="s-ntp" placeholder="pool.ntp.org"></div>
+        <div><label>Timezone (POSIX TZ)</label><input id="s-tz" placeholder="UTC0"></div>
+        <div><label>OTA password</label><input id="s-otapw" type="password"
+             placeholder="(unchanged, - to clear)"></div>
+        <div><label>Dwell ms</label><input type="number" id="s-dwell" min="0" max="10000"></div>
+        <div><label>Absence ms</label><input type="number" id="s-abs" min="200" max="60000"></div>
+        <div><label>Cooldown s</label><input type="number" id="s-cool" min="0" max="3600"></div>
+        <div><label>Scan valid for s</label><input type="number" id="s-valid" min="5" max="3600"></div>
+        <div><label>Arm timeout s</label><input type="number" id="s-armto" min="5" max="3600"></div>
+        <div><label>Slot poll ms</label><input type="number" id="s-poll" min="250" max="10000"></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <label class="toggle"><input type="checkbox" id="s-generic"> Report vendor as "Generic"</label>
+        <label class="toggle"><input type="checkbox" id="s-uid"> Send CARD_UID</label>
+        <label class="toggle"><input type="checkbox" id="s-boot"> Re-send on boot</label>
+        <label class="toggle"><input type="checkbox" id="s-ota"> Allow OTA updates</label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="toggle"><input type="checkbox" id="s-smon"> Use Spoolman</label>
+        <label class="toggle"><input type="checkbox" id="s-smloc"> Set spool location on send</label>
+        <label class="toggle"><input type="checkbox" id="s-smnote"> Note loads in the comment</label>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button id="save">Save settings</button>
+        <button class="ghost" id="test">Test printer</button>
+      </div>
+      <p class="hint">Slot 1&ndash;4 map to <code>channel</code> 0&ndash;3. Saving WiFi
+         credentials reboots the bridge.</p>
+    </details>
+  </section>
+
+  <p class="hint" style="text-align:center" id="ver"></p>
+</main>
+
+<div class="modal" id="picker">
+  <div class="sheet">
+    <h3>Link this tag</h3>
+    <p class="hint">Pick the spool that's physically on the reader. The tag's UID
+       gets written to that spool's <code>card_uids</code> field, and removed from
+       any other spool claiming it.</p>
+    <input id="spsearch" placeholder="Search vendor, name or material...">
+    <div id="splist"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="ghost" id="pclose">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+/* ---- offline preview shim (not part of the firmware) ---- */
+const _S={boxName:"Drybox 4A",sendOnBoot:true,printerHost:"192.168.1.42",
+  printerPort:80,wifiSsid:"HomeNet",scanIntervalMs:400,readerCount:1,
+  readerChannel:[2,3],forceGenericVendor:false,sendCardUid:true,wifiBand:2,
+  dualBand:true,triggerMode:4,dwellMs:700,absenceMs:3000,cooldownS:30,
+  scanValidS:300,armTimeoutS:120,statePollMs:1000,spoolmanEnabled:true,
+  spoolmanHost:"192.168.1.20",spoolmanPort:7912,spoolmanSetLocation:true,
+  spoolmanNoteLoads:true,locationFmt:"U1 slot {slot}",ntpServer:"pool.ntp.org",
+  timezone:"UTC0",otaEnabled:true,otaPasswordSet:false,extraKeys:["FFFFFFFFFFFF","A0A1A2A3A4A5"]};
+const _PEERS=[
+ {box:"Drybox 4B",host:"u1-drybox-4b",slot:4,printer:"192.168.1.42",printerOk:true,
+  present:true,spool:"Overture TPU 95A",rgb:0xE8E8E8,remainingG:250,version:"1.6.0"},
+ {box:"Drybox 1",host:"u1-drybox-1",slot:1,printer:"192.168.1.42",printerOk:true,
+  present:true,spool:"Bambu Lab PLA Basic",rgb:0xE2DFCD,remainingG:820,version:"1.5.0"},
+ {box:"Drybox 2",host:"u1-drybox-2",slot:2,printer:"192.168.1.42",printerOk:true,
+  present:true,spool:"Polymaker PLA Matte",rgb:0x3B3B3B,remainingG:410},
+ {box:"Drybox 5",host:"u1-drybox-5",slot:1,printer:"192.168.1.43",printerOk:true,
+  present:true,spool:"Prusament PETG HF",rgb:0x1A1A1A,remainingG:967},
+ {box:"Drybox 6",host:"u1-drybox-6",slot:2,printer:"192.168.1.43",printerOk:true,
+  present:false},
+ {box:"Drybox 7",host:"u1-drybox-7",slot:3,printer:"192.168.1.43",printerOk:true,
+  present:true,spool:"Generic PLA Silk",rgb:0xDFD628,remainingG:600}];
+let _ws=null;
+function _status(){return {ev:"status",version:"1.6.0",chip:"ESP32-C5",
+  box:"Drybox 4A",host:"u1-drybox-4a",readerCount:1,activeReader:0,
+  lanes:[{slot:3,ready:true,bus:"I2C0",present:true,pending:true,armed:false,
+          label:"Bambu Lab PETG",rgb:0x1353AB}],
+  dualBand:true,band:"5 GHz",rssi:-58,reader:true,pn532:"1.6",wifi:true,
+  ip:"192.168.1.79",printer:true,printerKnown:true,printerHost:"192.168.1.42",
+  spoolman:true,spoolmanOn:true,uptime:14203,triggerMode:4,triggerName:"on insert",
+  armed:false,armedChannel:0,pending:true,pendingAgeS:0,chanKnown:true,
+  chan:[true,true,true,true]};}
+window.fetch=async(u,o)=>{
+  if(u.includes("/api/fleet")){
+    setTimeout(()=>_ws.onmessage({data:JSON.stringify(
+      {ev:"fleet",error:"",peers:_PEERS})}),400);
+    return {json:async()=>({ok:true,queued:true})};}
+  if(u.includes("spoolman/spools")){
+    setTimeout(()=>_ws.onmessage({data:JSON.stringify({ev:"spools",error:"",spools:[]})}),150);
+    return {json:async()=>({ok:true,queued:true})};}
+  return {json:async()=>u.includes("settings")&&(!o||o.method!=="POST")?_S:{ok:true,queued:true}};
+};
+window.WebSocket=class{
+  constructor(){_ws=this;setTimeout(()=>{
+    this.onopen&&this.onopen();
+    this.onmessage({data:JSON.stringify(_status())});
+    this.onmessage({data:JSON.stringify({ev:"tag",reader:0,slot:3,note:"",spool:{
+      source:"Spoolman",vendor:"Bambu Lab",mainType:"PETG",subType:"Basic",
+      detailedType:"PETG Basic",rgb:0x1353AB,rgb2:0,alpha:255,hotendMin:245,
+      hotendMax:265,bedTemp:75,weightG:730,diameterUm:1750,lengthM:0,sku:0,
+      uid:"04C11E5A",cardType:"MIFARE_1K",spoolmanId:31,remainingG:730}})});
+    this.onmessage({data:JSON.stringify({ev:"log",level:"ok",
+      msg:"Spoolman #31: Bambu Lab PETG Basic (730 g left)"})});
+    this.onmessage({data:JSON.stringify({ev:"log",
+      msg:"sending to slot 3 - spool inserted in this box"})});
+    this.onmessage({data:JSON.stringify({ev:"log",level:"ok",
+      msg:"slot 3 set to Bambu Lab PETG Basic"})});
+    setTimeout(()=>document.getElementById("refleet").click(),600);
+  },120);}
+  send(){}
+};
+/* ---- end shim ---- */
+const $=id=>document.getElementById(id);
+const MAINS=["PLA","PETG","ABS","ASA","TPU","PVA","PC","PA"];
+const SUBS=["Basic","Matte","SnapSpeed","Silk","Support","HF","95A","95A HF"];
+MAINS.forEach(m=>$("f-main").add(new Option(m,m)));
+SUBS.forEach(s=>$("f-sub").add(new Option(s,s)));
+
+let channel=0, spool=null, spoolmanOn=false, spools=[];
+let mode=0, armed=false, armedCh=0, pending=false, pendingAge=0,
+    chan=[false,false,false,false], chanKnown=false;
+// One lane per reader — a dual-slot box runs two off one board.
+let readers=1, active=0, lanes=[], laneSpools=[null,null], readerChannel=[0,1];
+let myVersion="";
+
+function paintTabs(){
+  $("tabs").hidden=readers<2;
+  if(readers<2)return;
+  $("tabs").innerHTML="";
+  lanes.forEach((l,i)=>{
+    const d=document.createElement("div");
+    d.className="tab"+(i===active?" on":"");
+    const sw=l.present?`style="background:${hex(l.rgb||0)}"`:"";
+    d.innerHTML=`<span class="sw2" ${sw}></span><span class="t">`
+      +`<b>Reader ${i+1} - slot ${l.slot}</b>`
+      +`<span>${l.ready?(l.present?(l.label||"loaded"):"empty"):"reader offline"}</span></span>`;
+    d.onclick=()=>{
+      active=i; channel=(readerChannel[i]|0);
+      showSpool(laneSpools[i]); paintTabs(); paintSlots();
+      fetch("/api/reader?i="+i);
+    };
+    $("tabs").appendChild(d);
+  });
+}
+
+for(let i=0;i<4;i++){
+  const d=document.createElement("div");
+  d.className="slot"; d.dataset.c=i;
+  d.innerHTML=(i+1)+"<small>slot</small><i class='occ'></i>";
+  // The slot buttons are the reader's binding, not a transient selection:
+  // "this reader feeds slot N".
+  d.onclick=async()=>{
+    channel=i; readerChannel[active]=i;
+    paintSlots(); paintTabs();
+    await fetch("/api/settings",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({readerChannel})});
+    log(`reader ${active+1} now feeds slot ${i+1}`);
+  };
+  $("slots").appendChild(d);
+}
+function paintSlots(){
+  document.querySelectorAll(".slot").forEach(e=>{
+    const i=+e.dataset.c;
+    e.classList.toggle("sel",i===channel);
+    e.classList.toggle("armed",armed&&i===armedCh);
+    // Green dot = the printer says that slot has filament in it.
+    e.querySelector(".occ").className="occ"+(chanKnown&&chan[i]?" on":"");
+    e.title=chanKnown?(chan[i]?"occupied":"empty"):"slot state unknown";
+  });
+  $("arm").hidden=(mode!==2);
+  $("arm").textContent=`Arm slot ${channel+1}`;
+  paintGate();
+}
+
+// Explain, in words, what will happen next. Without this the on-load mode
+// looks broken — you scan a spool and nothing appears to occur.
+function paintGate(){
+  const g=$("gate");
+  const held=pending?`<b>${spool?spool.vendor+" "+spool.mainType:"a spool"}</b> is held`
+                    +(pendingAge?` (${pendingAge}s ago)`:"") :"nothing scanned yet";
+  if(mode===4){
+    g.innerHTML=pending
+      ? `<b>${spool?spool.vendor+" "+spool.mainType:"A spool"}</b> is in this box, `
+        +`assigned to <b>slot ${channel+1}</b>.`
+      : `Box is empty. The next spool put in here goes to <b>slot ${channel+1}</b>.`;
+  }else if(mode===0){
+    g.innerHTML=chanKnown
+      ? `${held}. It goes to whichever slot the printer reports filling next.`
+      : `${held}. <span class="idle">Can't read slot state from the printer — `
+        +`nothing will send automatically.</span>`;
+  }else if(mode===1){
+    g.innerHTML=`Every settled scan is sent straight to <b>slot ${channel+1}</b>.`;
+  }else if(mode===2){
+    g.innerHTML=armed?`<b>Armed: slot ${armedCh+1}</b>. Present a spool.`
+                     :`${held}. Press <b>Arm slot ${channel+1}</b> to release it.`;
+  }else{
+    g.innerHTML=`${held}. Nothing sends until you press <b>Send to printer</b>.`;
+  }
+}
+
+function log(msg,cls){
+  const d=document.createElement("div");
+  d.className=cls||"";
+  d.textContent=new Date().toLocaleTimeString()+"  "+msg;
+  $("log").prepend(d);
+  while($("log").children.length>60)$("log").lastChild.remove();
+}
+
+function setDot(id,state){
+  const e=$(id); e.className="dot"+(state?" "+state:"");
+}
+
+function hex(n){return "#"+(n&0xffffff).toString(16).padStart(6,"0");}
+
+function showSpool(s,note){
+  spool=s;
+  $("note").style.display=note?"block":"none";
+  $("note").textContent=note||"";
+  const known=s&&s.source!=="Unknown tag";
+  $("src").textContent=s?s.source:"waiting";
+  $("src").className="badge"+(known?"":" unk");
+  $("nm").textContent=known?`${s.vendor} ${s.mainType} ${s.subType}`:"Unrecognised tag";
+  $("uid").textContent=s&&s.uid?`${s.cardType||"?"} - UID ${s.uid}`:"no tag";
+  $("sw").style.background=s?hex(s.rgb):"#333";
+
+  // Spoolman line: linked spool + how much is left on it.
+  const linked=s&&s.spoolmanId>0;
+  $("sm").hidden=!linked;
+  if(linked){
+    const g=s.remainingG||0;
+    const pct=Math.max(0,Math.min(100,Math.round(g/1000*100)));
+    $("sm").innerHTML=`<span class="chip">SPOOLMAN #${s.spoolmanId}</span>`
+      +(g?`<span class="bar"><i style="width:${pct}%"></i></span><span>${g} g left</span>`:"");
+  }
+  // Offer to link only when there's an unlinked tag and Spoolman is configured.
+  $("link").hidden=!(spoolmanOn && s && s.uid && !linked);
+
+  if(!s)return;
+  $("f-vendor").value=s.vendor||"";
+  $("f-main").value=MAINS.includes(s.mainType)?s.mainType:"PLA";
+  $("f-sub").value=SUBS.includes(s.subType)?s.subType:"Basic";
+  $("f-color").value=hex(s.rgb);
+  $("f-hmin").value=s.hotendMin; $("f-hmax").value=s.hotendMax;
+  $("f-bed").value=s.bedTemp;    $("f-weight").value=s.weightG;
+  $("f-alpha").value=s.alpha;    $("a-val").textContent=s.alpha;
+  $("f-sku").value=s.sku||0;
+  paintGate();
+}
+
+function formSpool(){
+  return {
+    reader:active,
+    vendor:$("f-vendor").value||"Generic",
+    mainType:$("f-main").value,
+    subType:$("f-sub").value,
+    rgb:parseInt($("f-color").value.slice(1),16),
+    rgb2:spool?spool.rgb2:0,
+    alpha:+$("f-alpha").value,
+    hotendMin:+$("f-hmin").value, hotendMax:+$("f-hmax").value,
+    bedTemp:+$("f-bed").value, weightG:+$("f-weight").value,
+    sku:+$("f-sku").value,
+    uid:spool?spool.uid:"", cardType:spool?spool.cardType:""
+  };
+}
+
+$("f-alpha").oninput=e=>$("a-val").textContent=e.target.value;
+
+$("send").onclick=async()=>{
+  $("send").disabled=true;
+  try{
+    const r=await fetch("/api/send",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({channel,reader:active,spool:formSpool()})});
+    const j=await r.json();
+    // The board answers immediately and does the HTTP call to the printer from
+    // its main loop; the outcome arrives as a websocket log line.
+    if(j.queued)log(`queued for slot ${channel+1}...`);
+    else if(!j.ok)log("send failed: "+j.error,"bad");
+  }catch(e){log("send failed: "+e,"bad");}
+  $("send").disabled=false;
+};
+
+$("rescan").onclick=()=>fetch("/api/rescan",{method:"POST"});
+
+// ---- firmware update ----
+$("fwgo").onclick=async()=>{
+  const f=$("fwfile").files[0];
+  if(!f){$("fwmsg").textContent="Pick a firmware .bin first.";return;}
+  const fd=new FormData(); fd.append("firmware",f,f.name);
+  let url="/api/ota";
+  const pw=$("s-otapw").value;
+  if(pw)url+="?pw="+encodeURIComponent(pw);
+  $("fwbarwrap").hidden=false; $("fwbar").style.width="0%";
+  $("fwgo").disabled=true; $("fwmsg").textContent="Uploading "+f.name+"...";
+  try{
+    const r=await fetch(url,{method:"POST",body:fd});
+    const j=await r.json();
+    if(!j.ok)$("fwmsg").textContent="Failed: "+(j.error||"unknown error");
+  }catch(e){
+    // The board reboots as soon as the image verifies, so the response often
+    // never arrives. The websocket said "done" already if it worked.
+  }
+  $("fwgo").disabled=false;
+};
+
+// ---- fleet ----
+$("refleet").onclick=()=>{
+  $("fleet").innerHTML='<p class="hint">Looking for other boxes...</p>';
+  fetch("/api/fleet");    // answers over the websocket
+};
+function renderFleet(peers,err){
+  if(err&&!peers.length){$("fleet").innerHTML=`<p class="hint">${err}</p>`;return;}
+  if(!peers.length){$("fleet").innerHTML='<p class="hint">No other boxes found.</p>';return;}
+  peers.sort((a,b)=>(a.box||"").localeCompare(b.box||""));
+  $("fleet").innerHTML="";
+  peers.forEach(p=>{
+    const a=document.createElement("a");
+    a.className="peer"+(p.present?"":" empty");
+    a.href=`http://${p.host}.local/`;
+    const sw=p.present?`style="background:${hex(p.rgb||0)}"`:"";
+    a.innerHTML=`<span class="sw2" ${sw}></span><span class="t">`
+      +`<b>${p.box||p.host}</b>`
+      +`<span>slot ${p.slot} - ${p.present?(p.spool||"loaded"):"empty"}`
+      +`${p.present&&p.remainingG?" - "+p.remainingG+" g":""}</span>`
+      +`<span>${p.printer||"no printer"}${p.printerOk?"":" (unreachable)"}`
+      +`${p.version&&myVersion&&p.version!==myVersion
+          ? ` - <em style="color:var(--warn)">fw ${p.version}</em>` : ""}</span></span>`;
+    $("fleet").appendChild(a);
+  });
+}
+
+// ---- Spoolman spool picker ----
+$("link").onclick=()=>{
+  $("picker").classList.add("on");
+  $("splist").innerHTML='<p class="hint">Loading spools...</p>';
+  fetch("/api/spoolman/spools");   // result arrives over the websocket
+};
+$("pclose").onclick=()=>$("picker").classList.remove("on");
+$("picker").onclick=e=>{if(e.target===$("picker"))$("picker").classList.remove("on");};
+$("spsearch").oninput=()=>renderSpools();
+
+function renderSpools(){
+  const q=$("spsearch").value.toLowerCase();
+  const hits=spools.filter(s=>!q||
+    (s.label+" "+s.material+" "+s.location).toLowerCase().includes(q));
+  if(!hits.length){$("splist").innerHTML='<p class="hint">No spools match.</p>';return;}
+  $("splist").innerHTML="";
+  hits.slice(0,200).forEach(s=>{
+    const d=document.createElement("div");
+    d.className="sprow";
+    const rem=s.remaining>=0?`${s.remaining} g`:"weight unknown";
+    d.innerHTML=`<span class="sw2" style="background:#${(s.color||"666").replace('#','')}"></span>`
+      +`<span class="t"><b>${s.label}</b><span>#${s.id} - ${s.material||"?"} - ${rem}`
+      +`${s.location?" - "+s.location:""}</span></span>`
+      +(s.tagged?'<em>has a tag</em>':'');
+    d.onclick=async()=>{
+      $("picker").classList.remove("on");
+      const r=await fetch("/api/spoolman/link",{method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({spoolId:s.id})});
+      const j=await r.json();
+      if(j.queued)log(`linking tag to #${s.id}...`);
+      else if(!j.ok)log("link failed: "+j.error,"bad");
+    };
+    $("splist").appendChild(d);
+  });
+}
+
+$("mode").onchange=async e=>{
+  mode=+e.target.value;
+  await fetch("/api/settings",{method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({triggerMode:mode})});
+  log("trigger mode: "+e.target.selectedOptions[0].text.toLowerCase());
+  paintSlots();
+};
+
+$("arm").onclick=async()=>{
+  await fetch("/api/arm?channel="+channel);
+};
+
+$("test").onclick=async()=>{
+  await fetch("/api/ping");
+  log("pinging printer...");
+};
+
+$("save").onclick=async()=>{
+  const body={
+    printerHost:$("s-host").value, printerPort:+$("s-port").value,
+    readerChannel, wifiSsid:$("s-ssid").value,
+    scanIntervalMs:+$("s-scan").value, wifiBand:+$("s-band").value,
+    spoolmanEnabled:$("s-smon").checked, spoolmanHost:$("s-smhost").value,
+    spoolmanPort:+$("s-smport").value, spoolmanSetLocation:$("s-smloc").checked,
+    spoolmanNoteLoads:$("s-smnote").checked, locationFmt:$("s-locfmt").value,
+    ntpServer:$("s-ntp").value, timezone:$("s-tz").value,
+    otaEnabled:$("s-ota").checked,
+    boxName:$("s-box").value, sendOnBoot:$("s-boot").checked,
+    dwellMs:+$("s-dwell").value, absenceMs:+$("s-abs").value,
+    cooldownS:+$("s-cool").value,
+    scanValidS:+$("s-valid").value, armTimeoutS:+$("s-armto").value,
+    statePollMs:+$("s-poll").value,
+    forceGenericVendor:$("s-generic").checked, sendCardUid:$("s-uid").checked,
+    extraKeys:$("s-keys").value.split(/[,\s]+/).filter(k=>k.length===12)
+  };
+  if($("s-pass").value)body.wifiPass=$("s-pass").value;
+  if($("s-otapw").value)body.otaPassword=$("s-otapw").value;
+  if($("s-key").value)body.apiKey=$("s-key").value;
+  const j=await(await fetch("/api/settings",{method:"POST",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+  log(j.ok?"settings saved":"save failed: "+j.error,j.ok?"ok":"bad");
+  if(j.reboot)log("rebooting to join the new network...","warn");
+};
+
+async function loadSettings(){
+  const s=await(await fetch("/api/settings")).json();
+  $("s-host").value=s.printerHost; $("s-port").value=s.printerPort;
+  $("s-ssid").value=s.wifiSsid;    $("s-scan").value=s.scanIntervalMs;
+  $("s-band").value=s.wifiBand||0;
+  // The band controls only exist on a dual-band part (ESP32-C5 and friends).
+  $("band-row").hidden=!s.dualBand;
+  $("s-generic").checked=s.forceGenericVendor;
+  $("s-uid").checked=s.sendCardUid;
+  $("s-keys").value=(s.extraKeys||[]).join(",");
+  $("s-smon").checked=s.spoolmanEnabled;
+  $("s-smhost").value=s.spoolmanHost||"";
+  $("s-smport").value=s.spoolmanPort||7912;
+  $("s-smloc").checked=s.spoolmanSetLocation;
+  $("s-smnote").checked=s.spoolmanNoteLoads;
+  $("s-locfmt").value=s.locationFmt||"";
+  $("s-ntp").value=s.ntpServer||"";
+  $("s-ota").checked=s.otaEnabled!==false;
+  $("s-otapw").placeholder=s.otaPasswordSet?"(set — blank to keep, - to clear)":"(none set)";
+  $("s-tz").value=s.timezone||"";
+  mode=s.triggerMode|0; $("mode").value=String(mode);
+  $("s-box").value=s.boxName||""; $("s-boot").checked=s.sendOnBoot;
+  $("s-abs").value=s.absenceMs;
+  $("s-dwell").value=s.dwellMs; $("s-cool").value=s.cooldownS;
+  $("s-valid").value=s.scanValidS; $("s-armto").value=s.armTimeoutS;
+  $("s-poll").value=s.statePollMs;
+  readerChannel=s.readerChannel||readerChannel;
+  channel=readerChannel[active]|0;
+  paintSlots(); paintTabs();
+  if(!s.printerHost)$("setpanel").open=true;
+}
+
+function connect(){
+  const ws=new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen=()=>log("connected");
+  ws.onclose=()=>{log("disconnected, retrying...","warn");setTimeout(connect,2000);};
+  ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
+    if(m.ev==="status"){
+      setDot("d-rd",m.reader?"on":"off");
+      setDot("d-wf",m.wifi?"on":"off");
+      setDot("d-pr",m.printer?"on":(m.printerKnown?"off":"idle"));
+      $("t-wf").textContent=m.ip||"WiFi";
+      $("t-pr").textContent=m.printerHost||"Printer";
+      readers=m.readerCount||1; lanes=m.lanes||lanes;
+      if(lanes.length)readerChannel=lanes.map(l=>(l.slot|0)-1);
+      if(m.box){
+        $("title").textContent = readers>1
+          ? `${m.box} → slots ${lanes.map(l=>l.slot).join(" + ")}`
+          : `${m.box} → slot ${lanes.length?lanes[0].slot:1}`;
+      }
+      paintTabs();
+      mode=m.triggerMode|0; $("mode").value=String(mode);
+      armed=!!m.armed; armedCh=m.armedChannel|0;
+      pending=!!m.pending; pendingAge=m.pendingAgeS|0;
+      chan=m.chan||chan; chanKnown=!!m.chanKnown;
+      paintSlots();
+      spoolmanOn=!!m.spoolmanOn;
+      $("p-sm").hidden=!m.spoolmanOn;
+      setDot("d-sm",m.spoolman?"on":"off");
+      $("p-band").hidden=!m.dualBand;
+      if(m.dualBand){
+        setDot("d-bd",m.band?(m.band==="5 GHz"?"on":"idle"):"off");
+        $("t-bd").textContent=m.band?`${m.band} ${m.rssi} dBm`:"offline";
+      }
+      myVersion=m.version||"";
+      $("fwnow").textContent=`Running ${m.version} on ${m.chip||"esp32"}. `
+        +`Upload a firmware.bin to update over the air — nothing is committed `
+        +`until the whole image verifies.`;
+      $("ver").textContent=`${m.chip||"esp32"} - firmware ${m.version} - `
+        +`PN532 fw ${m.pn532||"n/a"} - uptime ${m.uptime}s`;
+    }else if(m.ev==="tag"){
+      const r=m.reader|0;
+      laneSpools[r]=m.spool;
+      if(r===active)showSpool(m.spool,m.note);
+      paintTabs();
+      log(m.spool&&m.spool.source!=="Unknown tag"
+        ? `read ${m.spool.source} tag: ${m.spool.vendor} ${m.spool.mainType}`
+        : "unrecognised tag "+(m.spool?m.spool.uid:""),
+        m.spool&&m.spool.source!=="Unknown tag"?"ok":"warn");
+    }else if(m.ev==="spools"){
+      spools=m.spools||[];
+      if(m.error){$("splist").innerHTML=`<p class="hint">${m.error}</p>`;log("Spoolman: "+m.error,"bad");}
+      else renderSpools();
+    }else if(m.ev==="ota"){
+      $("fwbarwrap").hidden=false;
+      if(m.pct>=0)$("fwbar").style.width=m.pct+"%";
+      if(m.state==="progress")$("fwmsg").textContent=`Writing... ${m.pct}%`;
+      else if(m.state==="start")$("fwmsg").textContent="Receiving "+(m.msg||"image")+"...";
+      else if(m.state==="done"){
+        $("fwmsg").textContent="Installed — rebooting. This page will reconnect.";
+        log("firmware installed, rebooting","ok");
+      }else if(m.state==="error"){
+        $("fwmsg").textContent="Failed: "+m.msg+" (the box is still running the old firmware)";
+        log("OTA failed: "+m.msg,"bad");
+      }
+    }else if(m.ev==="fleet"){
+      renderFleet(m.peers||[],m.error);
+    }else if(m.ev==="log"){
+      log(m.msg,m.level);
+    }
+  };
+}
+
+paintSlots(); loadSettings(); connect();
+</script>
+</body></html>

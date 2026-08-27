@@ -1,0 +1,888 @@
+<title>Drybox Capacitor Retrofit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #F1F4F7;
+    --surface:    #FFFFFF;
+    --surface-2:  #E7ECF1;
+    --ink:        #16243A;
+    --ink-soft:   #4A5A70;
+    --ink-faint:  #7C8CA0;
+    --rule:       #CFD9E2;
+    --rule-soft:  #E1E8EE;
+    --schematic:  #1E4E7C;
+    --copper:     #A85B2B;
+    --copper-dim: #F0E2D6;
+    --danger:     #A32C2C;
+    --danger-dim: #F5DEDE;
+    --good:       #2F6B4F;
+    --good-dim:   #DCEAE2;
+
+    --shadow: 0 1px 2px rgba(22,36,58,.06), 0 8px 24px -12px rgba(22,36,58,.18);
+
+    --step--1: clamp(.78rem, .76rem + .1vw, .84rem);
+    --step-0:  clamp(1rem, .97rem + .15vw, 1.075rem);
+    --step-1:  clamp(1.2rem, 1.12rem + .38vw, 1.42rem);
+    --step-2:  clamp(1.5rem, 1.34rem + .78vw, 2rem);
+    --step-3:  clamp(1.95rem, 1.6rem + 1.7vw, 3rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0F151C;
+      --surface:    #161F29;
+      --surface-2:  #1E2937;
+      --ink:        #DFE7EF;
+      --ink-soft:   #A3B1C2;
+      --ink-faint:  #74849A;
+      --rule:       #2C3949;
+      --rule-soft:  #222E3C;
+      --schematic:  #74B0E2;
+      --copper:     #DB9059;
+      --copper-dim: #33241A;
+      --danger:     #E0827F;
+      --danger-dim: #351E1E;
+      --good:       #6FBE95;
+      --good-dim:   #17291F;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0F151C;
+    --surface:    #161F29;
+    --surface-2:  #1E2937;
+    --ink:        #DFE7EF;
+    --ink-soft:   #A3B1C2;
+    --ink-faint:  #74849A;
+    --rule:       #2C3949;
+    --rule-soft:  #222E3C;
+    --schematic:  #74B0E2;
+    --copper:     #DB9059;
+    --copper-dim: #33241A;
+    --danger:     #E0827F;
+    --danger-dim: #351E1E;
+    --good:       #6FBE95;
+    --good-dim:   #17291F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 1rem + 2vw, 3.5rem) clamp(1.1rem, .6rem + 2vw, 2rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.25rem, 1.8rem + 1.6vw, 3.5rem);
+  }
+
+  /* ---- masthead ---- */
+  .mast { display: flex; flex-direction: column; gap: .85rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .9rem;
+    align-items: baseline;
+  }
+  .eyebrow .sep { color: var(--ink-faint); }
+
+  h1 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: var(--step-3);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: var(--step-1);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 42ch;
+    text-wrap: pretty;
+  }
+
+  .mast-rule {
+    height: 3px;
+    background: linear-gradient(90deg, var(--copper) 0 22%, var(--rule) 22% 100%);
+    border-radius: 2px;
+  }
+
+  /* ---- sections ---- */
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+
+  h2 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: var(--step-2);
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    margin: 0;
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: .7rem;
+  }
+  h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+    transform: translateY(-.28em);
+  }
+
+  h3 {
+    font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: var(--step-1);
+    letter-spacing: -.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  p { margin: 0; max-width: 68ch; text-wrap: pretty; }
+  section > p + p { margin-top: -.35rem; }
+
+  a { color: var(--schematic); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--copper);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .92em;
+    font-variant-numeric: tabular-nums;
+  }
+  p code, li code, td code {
+    background: var(--surface-2);
+    padding: .1em .38em;
+    border-radius: 3px;
+  }
+
+  /* ---- current budget ---- */
+  .budget {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: clamp(1.1rem, .8rem + 1.2vw, 1.75rem);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  .budget-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .5rem 1rem;
+    padding-bottom: .9rem;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .budget-head .label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .budget-head .cap {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rail { display: flex; flex-direction: column; gap: .5rem; }
+
+  .rail-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    font-size: var(--step--1);
+  }
+  .rail-name { font-weight: 600; }
+  .rail-total {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+  }
+
+  .bar {
+    display: flex;
+    height: 30px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+  }
+  .seg {
+    display: flex;
+    align-items: center;
+    padding: 0 .5rem;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #fff;
+  }
+  .seg-mcu   { background: var(--schematic); }
+  .seg-nfc   { background: var(--copper); }
+  .seg-free  { background: transparent; color: var(--ink-faint); }
+  :root[data-theme="dark"] .seg-mcu,
+  :root[data-theme="dark"] .seg-nfc { color: #0F151C; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .seg-mcu,
+    :root:not([data-theme="light"]) .seg-nfc { color: #0F151C; }
+  }
+
+  .rail-note {
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+  }
+  .verdict {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .13em .5em;
+    border-radius: 3px;
+  }
+  .verdict.tight { background: var(--danger-dim); color: var(--danger); }
+  .verdict.ok    { background: var(--good-dim);   color: var(--good); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.2rem;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    padding-top: .2rem;
+  }
+  .legend span { display: flex; align-items: center; gap: .45rem; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+  /* ---- tables ---- */
+  .tscroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 40rem; }
+  th, td { text-align: left; padding: .72rem .85rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.val {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  td.qty {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--ink-soft);
+  }
+  .part-name { font-weight: 600; display: block; }
+  .part-sub { font-size: var(--step--1); color: var(--ink-soft); }
+  .req {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .12em .45em;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .req.must  { background: var(--copper-dim); color: var(--copper); }
+  .req.maybe { background: var(--surface-2);  color: var(--ink-faint); }
+
+  /* ---- steps ---- */
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.5rem; counter-reset: s; }
+  ol.steps > li {
+    counter-increment: s;
+    display: grid;
+    grid-template-columns: 2.1rem 1fr;
+    gap: .35rem 1rem;
+    align-items: start;
+  }
+  ol.steps > li::before {
+    content: counter(s, decimal-leading-zero);
+    grid-row: span 2;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--copper);
+    padding-top: .22em;
+    border-top: 2px solid var(--copper);
+    letter-spacing: .04em;
+  }
+  ol.steps h3 { margin-bottom: .3rem; }
+  ol.steps p  { max-width: 62ch; }
+  ol.steps .body { display: flex; flex-direction: column; gap: .55rem; }
+
+  /* ---- callouts ---- */
+  .note {
+    border-left: 3px solid var(--schematic);
+    background: var(--surface);
+    padding: .85rem 1.05rem;
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+  }
+  .note.warn   { border-left-color: var(--danger); }
+  .note.copper { border-left-color: var(--copper); }
+  .note .h {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .note.warn .h   { color: var(--danger); }
+  .note.copper .h { color: var(--copper); }
+  .note p { font-size: var(--step--1); line-height: 1.55; }
+
+  /* ---- polarity figure ---- */
+  figure { margin: 0; display: flex; flex-direction: column; gap: .6rem; }
+  .figbox {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.25rem 1rem .9rem;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption { font-size: var(--step--1); color: var(--ink-soft); max-width: 68ch; }
+
+  ul.plain { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .45rem; }
+  ul.plain li { max-width: 66ch; }
+
+  .closing {
+    border-top: 2px solid var(--rule);
+    padding-top: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+  }
+  .sources { font-size: var(--step--1); color: var(--ink-faint); }
+  .sources a { color: var(--ink-soft); }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">
+      <span>Hardware fix</span><span class="sep">/</span>
+      <span>8 dryboxes</span><span class="sep">/</span>
+      <span>~15 min per box</span>
+    </div>
+    <h1>Drybox Capacitor Retrofit</h1>
+    <p class="standfirst">Two capacitors per PN532, fitted at the module, to stop WiFi transmit
+      current from knocking the I<sup>2</sup>C bus over.</p>
+    <div class="mast-rule"></div>
+  </header>
+
+  <section>
+    <h2>Why this is the fix</h2>
+    <p>The XIAO and the PN532 share one 3V3 rail. Every time the radio transmits, it pulls
+      hard and fast, and the wiring between the regulator and the PN532 has enough impedance
+      that the module's local voltage dips. Catch a dip mid-byte and the transaction dies,
+      which latches the I<sup>2</sup>C driver into <code>ESP_ERR_INVALID_STATE</code> — the
+      error filling your serial console.</p>
+    <p>Here is the budget, from the datasheets. Espressif specifies a supply capable of at
+      least 600&nbsp;mA for the C5 on its own.</p>
+
+    <div class="budget">
+      <div class="budget-head">
+        <span class="label">Peak rail current vs. 600 mA supply spec</span>
+        <span class="cap">scale: 0 – 600 mA</span>
+      </div>
+
+      <div class="rail">
+        <div class="rail-top">
+          <span class="rail-name">On 5 GHz — what you are running now</span>
+          <span class="rail-total">543 mA</span>
+        </div>
+        <div class="bar" role="img"
+             aria-label="On 5 gigahertz: ESP32-C5 transmit 403 milliamps plus PN532 140 milliamps equals 543 of 600 milliamps, leaving 57 milliamps spare.">
+          <div class="seg seg-mcu"  style="width:67.2%">C5 TX 403 mA</div>
+          <div class="seg seg-nfc"  style="width:23.3%">PN532 140</div>
+          <div class="seg seg-free" style="width:9.5%">57</div>
+        </div>
+        <div class="rail-note"><span class="verdict tight">9% spare</span>
+          802.11a at 16.5 dBm is the hungriest mode this chip has.</div>
+      </div>
+
+      <div class="rail">
+        <div class="rail-top">
+          <span class="rail-name">On 2.4 GHz — same board, one setting changed</span>
+          <span class="rail-total">453 mA</span>
+        </div>
+        <div class="bar" role="img"
+             aria-label="On 2.4 gigahertz: ESP32-C5 transmit 313 milliamps plus PN532 140 milliamps equals 453 of 600 milliamps, leaving 147 milliamps spare.">
+          <div class="seg seg-mcu"  style="width:52.2%">C5 TX 313 mA</div>
+          <div class="seg seg-nfc"  style="width:23.3%">PN532 140</div>
+          <div class="seg seg-free" style="width:24.5%">147</div>
+        </div>
+        <div class="rail-note"><span class="verdict ok">24% spare</span>
+          90 mA cheaper per burst, for free.</div>
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--schematic)"></i>ESP32-C5 transmit peak</span>
+        <span><i class="swatch" style="background:var(--copper)"></i>PN532, RF field active (max)</span>
+        <span><i class="swatch" style="background:var(--surface-2);border:1px solid var(--rule)"></i>Headroom</span>
+      </div>
+    </div>
+
+    <p>The PN532 is eating the headroom the C5 was specified to have for itself. The
+      capacitors don't add current — they store a small reservoir <em>at the module</em>, so
+      the fast edge is served locally instead of being dragged down the wire.</p>
+
+    <div class="note warn">
+      <span class="h">What capacitors will not fix</span>
+      <p>They cover transients of tens of microseconds. They cannot hold up a rail that is
+        genuinely sagging for milliseconds — that is an undersized supply, and no sane
+        capacitor value fixes it. If the retrofit doesn't take, suspect the USB cable
+        (charge-only and thin cables are the usual culprits) or the supply itself before
+        reaching for a bigger capacitor.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Parts</h2>
+    <p>Quantities cover eight boxes with spares, which is how these are sold anyway. Total
+      cost is roughly the price of one spool of filament.</p>
+
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Part</th><th>Specification</th><th>Buy</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="part-name">Bulk capacitor</span>
+              <span class="part-sub">Aluminium electrolytic, radial, through-hole</span>
+            </td>
+            <td class="val">100 µF / 16 V</td>
+            <td class="qty">8 needed<br>pack of 20+</td>
+            <td><span class="req must">Required</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="part-name">Decoupling capacitor</span>
+              <span class="part-sub">Ceramic, X7R, through-hole. Marked <code>104</code></span>
+            </td>
+            <td class="val">0.1 µF / 50 V<br><span class="part-sub">= 100 nF</span></td>
+            <td class="qty">8 needed<br>pack of 20+</td>
+            <td><span class="req must">Required</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="part-name">Mid-range ceramic</span>
+              <span class="part-sub">X7R, 25 V or higher — see the derating note below</span>
+            </td>
+            <td class="val">10–22 µF</td>
+            <td class="qty">8 needed<br>pack of 20+</td>
+            <td><span class="req must">Strongly advised</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="part-name">Pull-up resistors</span>
+              <span class="part-sub">Only if your module has bare pads at SDA/SCL — most clones already have these fitted</span>
+            </td>
+            <td class="val">4.7 kΩ</td>
+            <td class="qty">up to 16</td>
+            <td><span class="req maybe">Check first</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="part-name">Heat-shrink tubing</span>
+              <span class="part-sub">To sleeve the electrolytic's legs against shorts</span>
+            </td>
+            <td class="val">2–3 mm</td>
+            <td class="qty">1 pack</td>
+            <td><span class="req maybe">Recommended</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Does a bigger one help?</h3>
+    <p>Up to a point, yes — and there is a real reason to go past 100&nbsp;µF rather than
+      superstition. What a capacitor buys you is <em>time</em>: how long it can carry the
+      load before the rail falls too far. Rearranged, C&nbsp;=&nbsp;I&nbsp;·&nbsp;t&nbsp;/&nbsp;ΔV.
+      At the PN532's worst-case 140&nbsp;mA and a working budget of 100&nbsp;mV of droop:</p>
+
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Ride out&hellip;</th><th>Lasts</th><th>Needs</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>One I²C bit at 100 kHz</td><td class="val">10 µs</td><td class="val">14 µF</td>
+              <td><span class="req maybe">easy</span></td></tr>
+          <tr><td>One byte plus its ACK</td><td class="val">90 µs</td><td class="val">126 µF</td>
+              <td><span class="req must">the one that matters</span></td></tr>
+          <tr><td>A whole PN532 command frame</td><td class="val">1 ms</td><td class="val">1400 µF</td>
+              <td><span class="req maybe">impractical</span></td></tr>
+          <tr><td>A 5 ms burst of WiFi TX</td><td class="val">5 ms</td><td class="val">7000 µF</td>
+              <td><span class="req maybe">not happening</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Corrupting a single byte is enough to kill the transaction</strong>, so the
+      row to design against is the 90&nbsp;µs one — and 100&nbsp;µF sits right on that edge
+      with no margin at all. Going to <strong>220&nbsp;µF or 470&nbsp;µF</strong> buys
+      genuine headroom and is the upgrade worth making.</p>
+
+    <p>Past that it stops paying. Nothing in the thousands of µF is realistic, and going
+      much bigger brings two costs of its own: a large bank looks like a short at switch-on,
+      and enough of it will make a current-limited USB supply fold back — browning the board
+      out at boot, which is the very fault you are trying to cure. Bigger cans also have
+      <em>higher</em> parasitic inductance, so they are slower on exactly the fast edges the
+      job is about.</p>
+
+    <div class="note copper">
+      <span class="h">Better than bigger: a mid-range ceramic</span>
+      <p>At these timescales impedance is set by ESR and inductance more than by value, and
+        ceramics beat electrolytics on both by a wide margin. Adding a <b>10&nbsp;µF or
+        22&nbsp;µF X7R</b> alongside is the single most effective thing you can do —
+        more so than doubling the electrolytic.</p>
+      <p>It fills a real gap. The 0.1&nbsp;µF covers the megahertz end, the electrolytic
+        covers the bulk, and between them sits a band where the impedance of the pair rises.
+        That band is where a transmit burst lives. Bridging it is why the standard stack is
+        three parts and not two: <b>0.1&nbsp;µF + 10–22&nbsp;µF ceramic + 220&nbsp;µF
+        electrolytic</b>, all across the same two pins. The ceramic is unpolarised, so
+        there is nothing to get backwards.</p>
+    </div>
+
+    <div class="note">
+      <span class="h">Reading the marking</span>
+      <p>Three digits, in picofarads: the first two are the figures, the third is how many
+        zeros follow. So <code>104</code> is 0.1&nbsp;µF and <code>106</code> is 10&nbsp;µF —
+        the two values you want. A trailing letter is tolerance (<code>K</code> ±10%,
+        <code>M</code> ±20%), not capacitance.</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Marked</th><th>Is</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td class="val">104</td><td class="val">0.1 µF</td><td>the high-frequency one</td></tr>
+            <tr><td class="val">105</td><td class="val">1 µF</td><td>too small to be the mid-range part</td></tr>
+            <tr><td class="val">106</td><td class="val">10 µF</td><td>the mid-range one</td></tr>
+            <tr><td class="val">226</td><td class="val">22 µF</td><td>mid-range with margin against derating</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>The code tells you the value and nothing else</b> — not the dielectric, not the
+        voltage rating, and those are what decide whether the part is any good here. A
+        <code>106</code> out of a generic assortment kit is quite likely Y5V or Z5U, because
+        10&nbsp;µF in through-hole X7R is comparatively expensive to make. Look for X7R and a
+        25&nbsp;V or 50&nbsp;V rating printed alongside; if neither appears anywhere on the
+        part, assume the worst dielectric and expect to keep only a few µF of it.</p>
+      <p>A tidy way round that: a surface-mount <b>1206 or 1210 X7R, 10&nbsp;µF, 25&nbsp;V</b>
+        is cheap, unambiguously the right part, and tacks neatly across two adjacent header
+        pins — its end caps land on them almost exactly.</p>
+    </div>
+
+    <div class="note">
+      <span class="h">Two things that catch people out with ceramics</span>
+      <p><b>Buy a much higher voltage rating than you need.</b> Class II ceramics (X5R, X7R)
+        lose capacitance under DC bias — a 10&nbsp;µF part rated 6.3&nbsp;V can be delivering
+        3–4&nbsp;µF once it is sitting at 3.3&nbsp;V, and the datasheet value is measured at
+        zero volts. A 25&nbsp;V or 50&nbsp;V part in a larger package keeps most of its
+        value. Avoid Y5V and Z5U outright; their voltage and temperature behaviour is far
+        worse than X7R's.</p>
+      <p><b>Don't go all-ceramic.</b> Replacing the electrolytic with a big ceramic looks
+        like an upgrade and can make things worse: a very low-ESR bank and the inductance of
+        your supply wiring form a resonant circuit with nothing to damp it, and the rail can
+        ring rather than settle. The electrolytic's comparatively high ESR is doing useful
+        work. Keep it, and let the ceramic handle the fast end.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="h">If it still browns out, stop adding capacitors</span>
+      <p>Capacitance covers microseconds. It cannot hold up a rail that is genuinely short of
+        current for milliseconds — that is the supply, and no sane value fixes it. If a box
+        still misbehaves with 470&nbsp;µF fitted, the fault is upstream: a thin or
+        charge-only USB cable, a weak charger, or a bad connection. A quick check with a
+        meter: measure VCC at the PN532 and 3V3 at the XIAO while it runs. More than a few
+        tens of mV between them is wire resistance, not missing capacitance.</p>
+    </div>
+
+    <div class="note copper">
+      <span class="h">Substitutions that are fine</span>
+      <p>220 µF or 470 µF instead of 100 µF gives more margin — take it if it fits physically.
+        Low-ESR types are better than standard, but standard works. 6.3 V or 25 V ratings are
+        both fine; 16 V is just the cheapest common part comfortably above a 5 V rail. A
+        general-purpose capacitor assortment kit covers both values in one purchase.</p>
+    </div>
+
+    <p>Step-by-step bench detail — pin mirroring, joint quality, iron placement and the
+      short check — is on the <a href="solder-guide.html">PN532 Solder Guide</a>.</p>
+
+    <div class="note">
+      <span class="h">Either header — and the free pins are the easy ones</span>
+      <p>The V3 module carries VCC and GND on <em>both</em> headers: the 4-pin (GND, VCC,
+        SDA, SCL) and the 8-pin (SCK, MISO, MOSI, SS, VCC, GND, IRQ, RSTO). One power net on
+        one small board, so the capacitors work from either.</p>
+      <p><b>If your supply wires land on one header, put the capacitors on the other one's
+        unused VCC/GND pins.</b> That is the easier job by a distance: no dupont housing in
+        the way of the iron, no plastic to melt, no reheating a joint that is already
+        carrying the supply, and far less chance of bridging or lifting anything. On the
+        4-pin header GND and VCC sit next to each other at 2.54&nbsp;mm, which is exactly the
+        lead pitch to buy.</p>
+      <p>The electrical cost is a couple of centimetres of PCB trace — on the order of
+        30&nbsp;nH against the 150&nbsp;nH-plus of dupont you are fixing. It is a rounding
+        error on the thing that is actually wrong.</p>
+      <p>Confirm the two headers really are one net in ten seconds: meter on continuity, one
+        probe on each header's VCC pin, then the same for GND. Both should beep.</p>
+    </div>
+
+    <h3>Tools</h3>
+    <ul class="plain">
+      <li>Soldering iron with a fine tip, around 320&nbsp;°C</li>
+      <li>Solder, 0.6–0.8&nbsp;mm</li>
+      <li>Flush cutters and tweezers</li>
+      <li>A multimeter — for the continuity check in step 6, which is the step that saves you
+        from letting smoke out</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Get the polarity right</h2>
+    <p>The ceramic is not polarised and goes in either way round. The electrolytic
+      <em>is</em>, and fitting it backwards makes it vent — loudly, and once.</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 620 240" width="620" role="img"
+             aria-label="Diagram of a radial electrolytic capacitor. The side with the printed stripe is negative and its leg is shorter; that leg goes to GND. The unmarked side is positive with the longer leg and goes to VCC. Both capacitors sit across the same VCC and GND pins on the PN532 module.">
+          <defs>
+            <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+              <path d="M0,1 L8,4.5 L0,8 z" fill="var(--ink-faint)"/>
+            </marker>
+          </defs>
+
+          <!-- electrolytic body -->
+          <rect x="72" y="34" width="96" height="104" rx="9"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="2"/>
+          <!-- polarity stripe -->
+          <rect x="72" y="34" width="27" height="104" rx="9"
+                fill="var(--copper)" opacity=".9"/>
+          <rect x="90" y="34" width="9" height="104" fill="var(--copper)" opacity=".9"/>
+          <text x="85.5" y="93" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="21" font-weight="600" fill="#fff">–</text>
+          <text x="140" y="93" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="15" fill="var(--ink-soft)">100µF</text>
+
+          <!-- legs -->
+          <line x1="86" y1="138" x2="86" y2="182" stroke="var(--ink-soft)" stroke-width="3"/>
+          <line x1="150" y1="138" x2="150" y2="206" stroke="var(--ink-soft)" stroke-width="3"/>
+
+          <text x="86" y="203" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="13" font-weight="600" fill="var(--copper)">SHORT</text>
+          <text x="150" y="227" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="13" font-weight="600" fill="var(--schematic)">LONG</text>
+
+          <!-- callout: stripe -->
+          <line x1="86" y1="26" x2="86" y2="12" stroke="var(--ink-faint)" stroke-width="1.5"/>
+          <line x1="86" y1="12" x2="196" y2="12" stroke="var(--ink-faint)" stroke-width="1.5"
+                marker-end="url(#ar)"/>
+          <text x="204" y="17" font-family="IBM Plex Sans, sans-serif" font-size="14"
+                fill="var(--ink-soft)">printed stripe = negative</text>
+
+          <!-- mapping arrows -->
+          <line x1="240" y1="120" x2="330" y2="120" stroke="var(--ink-faint)"
+                stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+
+          <!-- module header -->
+          <rect x="352" y="40" width="212" height="150" rx="6"
+                fill="var(--surface-2)" stroke="var(--ink-soft)" stroke-width="2"/>
+          <text x="458" y="66" text-anchor="middle" font-family="Archivo, sans-serif"
+                font-size="14" font-weight="600" fill="var(--ink-soft)">PN532 module</text>
+
+          <!-- VCC pad -->
+          <circle cx="392" cy="104" r="9" fill="none" stroke="var(--schematic)" stroke-width="3"/>
+          <circle cx="392" cy="104" r="3" fill="var(--schematic)"/>
+          <text x="412" y="109" font-family="IBM Plex Mono, monospace" font-size="15"
+                font-weight="600" fill="var(--schematic)">VCC</text>
+          <text x="466" y="109" font-family="IBM Plex Sans, sans-serif" font-size="13"
+                fill="var(--ink-faint)">← long leg</text>
+
+          <!-- GND pad -->
+          <circle cx="392" cy="152" r="9" fill="none" stroke="var(--copper)" stroke-width="3"/>
+          <circle cx="392" cy="152" r="3" fill="var(--copper)"/>
+          <text x="412" y="157" font-family="IBM Plex Mono, monospace" font-size="15"
+                font-weight="600" fill="var(--copper)">GND</text>
+          <text x="466" y="157" font-family="IBM Plex Sans, sans-serif" font-size="13"
+                fill="var(--ink-faint)">← stripe side</text>
+        </svg>
+      </div>
+      <figcaption>Two independent markings agree, so you can check yourself twice: the printed
+        stripe marks the negative side, and the negative leg is the shorter of the two on an
+        unclipped part. If someone has already trimmed the legs, trust the stripe.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Fitting one module</h2>
+
+    <ol class="steps">
+      <li>
+        <div class="body">
+          <h3>Power the box down and unplug it</h3>
+          <p>USB out at the wall end. The rail you are about to bridge is the one you are
+            trying to fix.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Find VCC and GND on the PN532</h3>
+          <p>Same header your existing wires come off — the pins are silkscreened. You are
+            fitting both capacitors across this pair, and nothing else on the board is
+            involved.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Trim both capacitors' legs short</h3>
+          <p>Leave about 8–10 mm. This matters more than it looks: long legs add inductance,
+            which is the exact thing you are fitting the capacitor to defeat. A neat capacitor
+            on long leads is worse than an ugly one sitting flush.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Solder the ceramic across VCC and GND</h3>
+          <p>Either way round. Underside of the module, directly onto the header pins where
+            they protrude, is ideal — that is as close to the chip as you can get without
+            touching the PCB.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Solder the electrolytic across the same two pins</h3>
+          <p>Stripe leg to <strong>GND</strong>, other leg to <strong>VCC</strong>. Check it
+            before the iron touches anything. Keep the iron on each joint for two or three
+            seconds — electrolytics dislike prolonged heat.</p>
+          <div class="note warn">
+            <span class="h">Check before you power up</span>
+            <p>A backwards electrolytic will bulge, vent and stink, and it can take the module
+              with it. It is worth the extra ten seconds of looking.</p>
+          </div>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Test for a short before applying power</h3>
+          <p>Multimeter on continuity or resistance, probes on VCC and GND. You should see the
+            reading climb as the capacitor charges and settle high. A steady beep or near-zero
+            ohms means a solder bridge — find it before you plug anything in.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Sleeve the legs and power up</h3>
+          <p>Heat-shrink over any bare leg that could touch something in a vibrating box.
+            Then power on and watch the serial console: you want the banner, then
+            <code>Reader 1 on I2C0 ready</code>, and no <code>259</code> errors.</p>
+        </div>
+      </li>
+
+      <li>
+        <div class="body">
+          <h3>Confirm it with the radio-off test</h3>
+          <p>In the web UI, <strong>Reader diagnostics → Run 5-minute radio-off test</strong>.
+            The board reboots, runs with its radio off, then reboots back — so read the
+            verdict off the USB serial console, not off the reset counter, which starts and
+            ends at zero either way. Then leave the box running normally for a working day
+            and watch that counter. Zero is the result you want.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Before you pick up the iron</h2>
+    <p>Two things cost nothing and are worth trying on one box first, if only to see how much
+      of the problem they account for.</p>
+    <ul class="plain">
+      <li><strong>Turn TX power down.</strong> Settings → WiFi TX power → 13 dBm. Applies live,
+        no reboot. Only on a box with signal to spare — check the RSSI reading first.</li>
+      <li><strong>Try 2.4 GHz.</strong> Worth 90 mA off every transmit peak, as the chart above
+        shows. You chose the C5 for 5 GHz, so this is a trade rather than a recommendation —
+        but if it stops the dropouts on a box that is far from the AP anyway, it tells you
+        something useful.</li>
+    </ul>
+    <p>Neither is a substitute for the capacitors across eight sealed boxes you would rather
+      not open twice. They are a way to confirm the diagnosis in ten minutes instead of an
+      afternoon.</p>
+  </section>
+
+  <div class="closing">
+    <p class="sources"><strong>Figures from:</strong>
+      <a href="https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html">ESP32-C5-WROOM-1 datasheet</a> —
+      TX peaks of 403 mA (802.11a, 16.5 dBm) and 313 mA (802.11b, 19 dBm), and the 0.6 A
+      minimum supply figure.
+      <a href="https://cdn-shop.adafruit.com/datasheets/pn532ds.pdf">NXP PN532/C1 datasheet</a> —
+      total supply current with the RF field active, 91 mA typical and 140 mA maximum.
+      <a href="https://www.elechouse.com/elechouse/images/product/PN532_module_V3/PN532_%20Manual_V3.pdf">Elechouse PN532 V3 manual</a> —
+      module VCC range of 3.3–5 V.</p>
+  </div>
+
+</div>
