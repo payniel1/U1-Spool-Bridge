@@ -188,6 +188,12 @@ void webBroadcastStatus() {
   // reader, which is when you actually want to check it.
   doc["slotsKnown"] = g_slotsKnown;
   if (g_slotsErr.length()) doc["slotsErr"] = g_slotsErr;
+
+  // Which side is answering /printer/filament_detect/set, and whether anything
+  // has actually told us or we are still running on the assumption.
+  doc["backend"]      = u1BackendName(u1BackendEffective());
+  doc["backendKnown"] = u1BackendKnown();
+  doc["presenceOnly"] = u1SlotsPresenceOnly();
   JsonArray sl = doc["slots"].to<JsonArray>();
   for (int i = 0; i < 4; i++) {
     JsonObject o = sl.add<JsonObject>();

@@ -325,6 +325,14 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
         <div><label>Printer host / IP</label><input id="s-host" placeholder="192.168.1.50"></div>
         <div><label>Printer port</label><input type="number" id="s-port" value="80"></div>
         <div><label>Moonraker API key</label><input id="s-key" type="password" placeholder="(unchanged)"></div>
+        <div><label>Printer backend</label>
+          <select id="s-backend">
+            <option value="0">Auto &mdash; detect, and fix itself</option>
+            <option value="1">paxx12 Extended Firmware</option>
+            <option value="2">Stock firmware + Bespok3d</option>
+          </select>
+          <p class="hint" id="s-backendhint" style="margin:6px 0 0"></p>
+        </div>
         <div><label>WiFi SSID</label><input id="s-ssid"></div>
         <div><label>WiFi password</label><input id="s-pass" type="password" placeholder="(unchanged)"></div>
         <div id="band-row" hidden><label>WiFi band</label><select id="s-band">
@@ -445,6 +453,28 @@ const refVersion=()=>myVersion||(fwSelf&&fwSelf.version)||"";
 // CARD_UID matches a tag this box has read gets marked, so across a fleet you can
 // see which drybox fed which slot.
 let slots=[], slotsKnown=false, slotsErr="";
+let backendName="", backendKnown=false, presenceOnly=false;
+
+function paintBackendHint(){
+  const el=$("s-backendhint"), sel=$("s-backend"); if(!el||!sel)return;
+  const v=+sel.value||0;
+  let t;
+  if(v===1){
+    t="Sends CARD_TYPE and reads the printer back. If a send is refused for an "
+     +"unknown field, this pinned setting is why \u2014 the box will say so "
+     +"rather than working around it.";
+  }else if(v===2){
+    t="Leaves CARD_TYPE out: the Bespok3d handler validates the whole info "
+     +"object and rejects the entire request over one key it does not know. It "
+     +"also has no queryable filament_detect, so \u201cLoaded in the printer\u201d "
+     +"falls back to what the boxes themselves know.";
+  }else{
+    t="Works it out from the printer, and if a send is refused for an unknown "
+     +"field it drops the Extended-only ones and retries.";
+  }
+  if(backendName)t+=` Currently: ${backendName}${backendKnown?"":" (assumed)"}.`;
+  el.textContent=t;
+}
 const myUids=new Set();
 
 // What the dryboxes themselves say is sitting in each slot of THIS printer.
@@ -520,7 +550,15 @@ function paintLoaded(){
     `<p class="hint">Rows marked <b>IN THE BOX</b> come from the drybox's own `
    +`reader. The printer only reports filament data for a slot once it has that `
    +`filament in it, so until you load it these are the only source.</p>`);
-  if(slotsErr)el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
+  if(presenceOnly){
+    el.insertAdjacentHTML("beforeend",
+      `<p class="hint">This printer reports which slots are <b>occupied</b> but `
+     +`not what is in them \u2014 the Bespok3d plugin serves the setter without a `
+     +`queryable <code>filament_detect</code>. Everything above that names a `
+     +`filament came from a drybox, not from the printer.</p>`);
+  }else if(slotsErr){
+    el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
+  }
 }
 
 function paintTabs(){
@@ -1378,9 +1416,12 @@ $("test").onclick=async()=>{
   log("pinging printer...");
 };
 
+$("s-backend").onchange=paintBackendHint;
+
 $("save").onclick=async()=>{
   const body={
     printerHost:$("s-host").value, printerPort:+$("s-port").value,
+    printerBackend:+$("s-backend").value,
     readerChannel, wifiSsid:$("s-ssid").value,
     scanIntervalMs:+$("s-scan").value, wifiBand:+$("s-band").value,
     wifiTxPower:+$("s-txp").value,
@@ -1410,6 +1451,7 @@ $("save").onclick=async()=>{
 async function loadSettings(){
   const s=await(await fetch("/api/settings")).json();
   $("s-host").value=s.printerHost; $("s-port").value=s.printerPort;
+  $("s-backend").value=String(s.printerBackend||0); paintBackendHint();
   $("s-ssid").value=s.wifiSsid;    $("s-scan").value=s.scanIntervalMs;
   $("s-band").value=s.wifiBand||0;
   $("s-txp").value=s.wifiTxPower||0;
@@ -1488,6 +1530,8 @@ function connect(){
       $("fwnow").textContent=`Running ${m.version} on ${m.chip||"esp32"}. `
         +`Upload a firmware.bin to update over the air — nothing is committed `
         +`until the whole image verifies.`;
+      if(m.backend){backendName=m.backend;backendKnown=!!m.backendKnown;
+        presenceOnly=!!m.presenceOnly;paintBackendHint();}
       if(m.slots){slots=m.slots;slotsKnown=!!m.slotsKnown;slotsErr=m.slotsErr||"";paintLoaded();}
       $("diagnow").textContent=m.resets
         ? `This reader has had to reset its I2C bus ${m.resets} time(s) since boot.`

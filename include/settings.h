@@ -10,9 +10,14 @@
 
 #define MAX_EXTRA_KEYS 6
 
+// Settings.printerBackend — who is serving /printer/filament_detect/set.
+#define U1_BACKEND_AUTO     0   // probe, and fix itself if a send is rejected
+#define U1_BACKEND_EXTENDED 1   // paxx12 Extended Firmware
+#define U1_BACKEND_STOCK    2   // stock firmware + the Bespok3d plugin
+
 // Bumped whenever the struct layout changes; a mismatch falls back to defaults
 // rather than reading garbage out of NVS.
-#define SETTINGS_VERSION 7
+#define SETTINGS_VERSION 8
 
 // The oldest blob layout settingsLoad() will still overlay onto defaults.
 // Raise it only if a change makes an old blob genuinely unreadable rather than
@@ -38,7 +43,9 @@ struct Settings {
   // with signal to spare — check the RSSI pill before you drop it.
   uint8_t wifiTxPower;
 
-  // Printer (Moonraker on the U1, with the paxx12 Extended Firmware)
+  // Printer (Moonraker on the U1). Which side is serving
+  // /printer/filament_detect/set is `printerBackend`, appended at the end of
+  // this struct — see the note there.
   char     printerHost[64];
   uint16_t printerPort;
   char     apiKey[48];
@@ -79,6 +86,22 @@ struct Settings {
   // Creality / third-party tags whose keys are not derivable.
   char extraKeys[MAX_EXTRA_KEYS][13];
 
+  // ---- append new fields BELOW this line, never above it ------------------
+  // (see the layout guard under the struct)
+
+  // Which implementation is answering POST /printer/filament_detect/set.
+  //
+  //   paxx12 Extended Firmware  — accepts CARD_TYPE alongside CARD_UID.
+  //   Bespok3d RFID Spool Reader — a Klipper extra on STOCK firmware that
+  //     registers the same endpoint, but rejects the whole request with
+  //     "unsupported fields" if it sees a key it does not know, and CARD_TYPE
+  //     is one of those. It also exposes no queryable filament_detect object,
+  //     so the readback goes dark and only slot presence survives.
+  //
+  // U1_BACKEND_AUTO detects it and self-corrects on a rejected send; the two
+  // explicit values are there for when you would rather not let it guess.
+  uint8_t printerBackend;
+
   void loadDefaults();
 };
 
@@ -110,7 +133,7 @@ static_assert(offsetof(Settings, otaPassword) == 369, "Settings layout changed")
 static_assert(offsetof(Settings, ntpServer)   == 402, "Settings layout changed");
 static_assert(offsetof(Settings, timezone)    == 442, "Settings layout changed");
 static_assert(offsetof(Settings, extraKeys)   == 502, "Settings layout changed");
-static_assert(sizeof(Settings) == 580, "Settings grew — see the layout guard above");
+static_assert(sizeof(Settings) == 582, "Settings grew — see the layout guard above");
 
 // The group a box belongs to in the fleet view. Kept OUT of the struct above
 // and stored under its own NVS key, precisely so adding it cannot change

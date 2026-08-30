@@ -104,7 +104,7 @@
 
 #define AP_SSID     "U1-SpoolBridge"
 #define AP_PASSWORD "spoolbridge"   // >= 8 chars, change if you like
-#define FW_VERSION  "1.15.3"
+#define FW_VERSION  "1.16.0"
 
 // ---------------------------------------------------------------------------
 // Build fingerprint.

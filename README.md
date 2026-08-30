@@ -30,18 +30,30 @@ printer, and one upload updates every box on the network.
 
 ---
 
-## ⚠️ Read this first: firmware requirement
+## ⚠️ Read this first: the printer needs one of two things
 
-The write path used here is `POST /printer/filament_detect/set`, which is added by the
-community **[SnapmakerU1-Extended-Firmware](https://github.com/paxx12/SnapmakerU1-Extended-Firmware)**
-(paxx12). It patches Klipper's `filament_detect` object to be writable.
+The write path used here is `POST /printer/filament_detect/set`. **Bare stock
+Snapmaker firmware does not serve it** — on stock the U1 trusts only its own
+tags and there is no supported way to set a slot's material remotely, so the
+send returns 404.
 
-**Stock Snapmaker firmware does not expose this endpoint.** On stock firmware the U1
-only trusts its own RSA-signed tags, and there is no supported way to set a slot's
-material remotely. If you are on stock firmware, this project will read your spools
-and show you everything — but the send will fail with a 404.
+Two separate projects add that endpoint, and this firmware works with either.
 
-If you would rather not run custom firmware, the board also exposes
+| | [**SnapmakerU1-Extended-Firmware**](https://github.com/paxx12/SnapmakerU1-Extended-Firmware) (paxx12) | [**Bespok3d** RFID Spool Reader](https://github.com/Bespok3d/u1-enhanced-rfid) |
+|---|---|---|
+| What it is | A replacement firmware image | A Klipper plugin, installed from a desktop app |
+| Flashing | Yes | **No — runs on stock firmware** |
+| How the endpoint appears | Patches `filament_detect` to expose a writable `set` | `webhooks.register_endpoint("filament_detect/set", …)` |
+| `CARD_TYPE` | Accepted | **Rejected — and it fails the whole request** |
+| Reading the printer back | Yes, `filament_detect` is queryable | No `get_status`, so slot *presence* only |
+
+Set **Printer backend** in Settings, or leave it on **Auto**, which is the
+default: the box works it out from whether `filament_detect` answers a query,
+and if a send is ever refused for carrying a field the other side does not know
+it drops that field and retries once. See [Running on stock
+firmware](#running-on-stock-firmware) for what changes.
+
+If you would rather not run either, the board also exposes
 `GET /api/tagjson`, which returns the OpenSpool JSON for the spool currently on the
 reader. You can write that onto an NTAG215 with a phone (NFC Tools) and let the
 printer read it the normal way.
@@ -808,8 +820,66 @@ Refreshed every 15 s, and immediately after a send, after a slot's occupancy cha
 when you press **Refresh**. The periodic timer is only a backstop for changes made at the
 machine itself.
 
-On stock firmware the card reports `filament_detect not exposed` and falls back to showing
-occupancy alone — presence comes from `print_task_config`, which stock does expose.
+On the Bespok3d backend this card is presence-only and says so under the rows: the plugin
+serves the setter but registers no `get_status`, so `filament_detect` cannot be queried and
+`print_task_config.filament_exist` is all the printer will tell us. Every row that names a
+filament there came from a drybox. See below.
+
+---
+
+## Running on stock firmware
+
+You do not have to flash the printer. [Bespok3d](https://bespok3d.app/) is a plugin
+manager for Klipper printers — a desktop app plus a small on-printer daemon, no flashing
+and no root — and its **RFID Spool Reader** plugin installs a Klipper extra that does:
+
+```python
+webhooks.register_endpoint("filament_detect/set", self._handle_filament_detect_set)
+...
+detector.set_filament_info(channel, filament_info)
+```
+
+That is the same URL, the same nested `info` object and the same `{"state":"success"}`
+answer as the Extended Firmware. So the box can talk to a stock printer with the plugin
+installed, and **Printer backend → Auto** will find it on its own.
+
+Worth knowing that the plugin's own reader will not see your spools. The U1's built-in
+FM175xx readers live in the printer's spool holders, and a spool in a drybox is not in a
+spool holder — Snapmaker have confirmed as much. You are installing that plugin for the
+endpoint it registers, not for the reader it drives. Which is also the reason this project
+exists.
+
+**Two things change on this backend.**
+
+**`CARD_TYPE` is not sent.** The Bespok3d handler validates the whole `info` object
+against a fixed field list and answers
+
+```json
+{"result":{"state":"error","message":"unsupported fields: CARD_TYPE"}}
+```
+
+refusing the *entire* request over the one key rather than ignoring it. `CARD_UID` is on
+its accepted list and still goes; only `CARD_TYPE`, which is an Extended Firmware
+addition, is dropped. Note that the refusal arrives as **HTTP 200** — which is why
+`u1_reply.cpp` classifies the body rather than trusting the status code, and why a
+substring check for `"result"` would have reported every rejected send as delivered.
+
+**The readback goes dark.** No `get_status` means no `filament_detect` in
+`/printer/objects/query`, so **Loaded in the printer** shows occupancy from
+`print_task_config` and fills the rest from the dryboxes, marked **IN THE BOX**. Nothing
+is lost that the boxes did not already know — you just stop getting the printer's
+independent confirmation.
+
+**Detection.** On **Auto** the box decides from whether `filament_detect` comes back in
+the 15-second slot query, and independently self-corrects: a send refused for an unknown
+field latches the stock backend, drops the extra fields and retries once, so a box pointed
+at the wrong kind of printer fixes itself on its first scan instead of failing every one.
+Pinning the setting turns that off — a pinned Extended backend that gets refused reports
+the refusal and names the setting, rather than quietly working around a deliberate choice.
+Changing the printer host clears the latch.
+
+**The two are mutually exclusive.** Both register the same endpoint, so run one or the
+other, not both.
 
 ---
 
@@ -977,7 +1047,8 @@ include/
   decoders.h      pure decoders (no hardware, unit-testable)
   crypto_hkdf.h   SHA-256 / HMAC / HKDF
   tag_reader.h    PN532 front end
-  u1_client.h     Moonraker client
+  u1_client.h     Moonraker client, and which backend is serving it
+  u1_reply.h      reading the printer's answer (hardware-free, unit-tested)
   spoolman.h      Spoolman client
   spoolman_fields.h  card_uids / JSON encoding (hardware-free, unit-tested)
   send_gate.h     when a scan may reach the printer (hardware-free, unit-tested)
@@ -993,7 +1064,7 @@ src/
   dec_openspool.cpp  NDEF TLV walk + OpenSpool JSON
   dec_bambu.cpp      key derivation + block map
   dec_qidi.cpp       material/colour code tables
-test/test_decoders/  48 host-side tests
+test/test_decoders/  57 host-side tests
 arduino/u1_spool_bridge/   include/ + src/ flattened into an Arduino IDE sketch
 docs/               flashing guides, wiring and capacitor pages
 licenses/           GPL-3.0, LGPL-3.0 and LGPL-2.1 texts, for binary releases
@@ -1164,6 +1235,10 @@ that SSID or is on a DFS channel the C5's regulatory domain won't use.
 - [Bambu-Research-Group/RFID-Tag-Guide](https://github.com/Bambu-Research-Group/RFID-Tag-Guide)
 - [QIDI Box RFID specification](https://wiki.qidi3d.com/en/QIDIBOX/RFID)
 - [TinkerBarn/BoxRFID-Touch — prior art, ESP32 + PN532 for U1 tags](https://github.com/TinkerBarn/BoxRFID-Touch)
+- [Bespok3d — plugin manager for Klipper printers, on stock firmware](https://bespok3d.app/)
+- [Bespok3d/u1-enhanced-rfid — the plugin that registers `filament_detect/set` on stock](https://github.com/Bespok3d/u1-enhanced-rfid)
+- [Bespok3d/material-tags — their tag decoders, and the hub contract](https://github.com/Bespok3d/material-tags)
+- [Snapmaker forum — RFID and dryboxes](https://forum.snapmaker.com/t/rfid-and-dryboxes/40217) (the readers are in the spool holders)
 
 ## Licence
 

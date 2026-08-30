@@ -11,6 +11,7 @@
 #include "send_gate.h"
 #include "spool_data.h"
 #include "spoolman_fields.h"
+#include "u1_reply.h"
 
 // ---------------------------------------------------------------------------
 // crypto
@@ -734,6 +735,84 @@ void test_fleet_body_read_stops_on_a_bad_image_read() {
   TEST_ASSERT_EQUAL_INT(1, (int)got);
 }
 
+
+// ---------------------------------------------------------------------------
+// Reading the printer's answer to filament_detect/set.
+//
+// Both backends answer HTTP 200 whatever happens, so the body is the only
+// signal. The case that matters is the Bespok3d validator refusing the whole
+// request over one unknown key: a lenient check would read that as a success
+// and the box would report every rejected send as delivered.
+// ---------------------------------------------------------------------------
+
+static U1Reply cls(const char *body, char *msg, size_t cap) {
+  return u1ClassifyReply(body, msg, cap);
+}
+
+void test_reply_success_wrapped() {
+  char m[160];
+  TEST_ASSERT_EQUAL(U1_REPLY_OK, cls("{\"result\":{\"state\":\"success\"}}", m, sizeof(m)));
+}
+
+void test_reply_success_bare() {
+  char m[160];
+  TEST_ASSERT_EQUAL(U1_REPLY_OK, cls("{\"state\":\"success\"}", m, sizeof(m)));
+}
+
+void test_reply_bespok3d_unsupported_field() {
+  char m[160];
+  // The exact shape rfid_ntag.py produces for a payload carrying CARD_TYPE.
+  const char *body =
+      "{\"result\":{\"state\":\"error\",\"message\":\"unsupported fields: CARD_TYPE\"}}";
+  TEST_ASSERT_EQUAL(U1_REPLY_BAD_FIELD, cls(body, m, sizeof(m)));
+  TEST_ASSERT_TRUE(strstr(m, "CARD_TYPE") != NULL);
+}
+
+void test_reply_error_is_not_success() {
+  // The regression this guards: "result" appears in the body, so a substring
+  // check for it would call this a success and lose the spool silently.
+  char m[160];
+  const char *body =
+      "{\"result\":{\"state\":\"error\",\"message\":\"channel[7] is out of range[0, 3]\"}}";
+  TEST_ASSERT_EQUAL(U1_REPLY_ERROR, cls(body, m, sizeof(m)));
+  TEST_ASSERT_EQUAL_STRING("channel[7] is out of range[0, 3]", m);
+}
+
+void test_reply_error_message_names_a_field() {
+  char m[160];
+  const char *body =
+      "{\"result\":{\"state\":\"error\",\"message\":\"unknown field SKU\"}}";
+  TEST_ASSERT_EQUAL(U1_REPLY_BAD_FIELD, cls(body, m, sizeof(m)));
+}
+
+void test_reply_bare_result_acknowledges() {
+  char m[160];
+  TEST_ASSERT_EQUAL(U1_REPLY_OK, cls("{\"result\":\"ok\"}", m, sizeof(m)));
+}
+
+void test_reply_truncated_still_caught() {
+  // A body cut short mid-JSON must not parse, but the field complaint is still
+  // the thing we act on, so the substring pass has to run first.
+  char m[160];
+  const char *body = "{\"result\":{\"state\":\"error\",\"message\":\"unsupported fields: CARD_T";
+  TEST_ASSERT_EQUAL(U1_REPLY_BAD_FIELD, cls(body, m, sizeof(m)));
+}
+
+void test_reply_garbage_and_empty() {
+  char m[160];
+  TEST_ASSERT_EQUAL(U1_REPLY_UNKNOWN, cls("<html>404</html>", m, sizeof(m)));
+  TEST_ASSERT_EQUAL(U1_REPLY_UNKNOWN, cls("", m, sizeof(m)));
+  TEST_ASSERT_EQUAL(U1_REPLY_UNKNOWN, cls(NULL, m, sizeof(m)));
+}
+
+void test_reply_message_is_truncated_not_overrun() {
+  char m[8];
+  const char *body =
+      "{\"result\":{\"state\":\"error\",\"message\":\"a considerably longer reason\"}}";
+  TEST_ASSERT_EQUAL(U1_REPLY_ERROR, cls(body, m, sizeof(m)));
+  TEST_ASSERT_EQUAL(7u, strlen(m));
+}
+
 int main(int, char **) {
   UNITY_BEGIN();
   RUN_TEST(test_sha256_vector);
@@ -784,5 +863,14 @@ int main(int, char **) {
   RUN_TEST(test_location_substitution_does_not_recurse);
   RUN_TEST(test_location_all_tokens_empty_is_blank_not_padded);
   RUN_TEST(test_location_group_only_is_shared_across_slots);
+  RUN_TEST(test_reply_success_wrapped);
+  RUN_TEST(test_reply_success_bare);
+  RUN_TEST(test_reply_bespok3d_unsupported_field);
+  RUN_TEST(test_reply_error_is_not_success);
+  RUN_TEST(test_reply_error_message_names_a_field);
+  RUN_TEST(test_reply_bare_result_acknowledges);
+  RUN_TEST(test_reply_truncated_still_caught);
+  RUN_TEST(test_reply_garbage_and_empty);
+  RUN_TEST(test_reply_message_is_truncated_not_overrun);
   return UNITY_END();
 }

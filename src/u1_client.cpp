@@ -3,8 +3,46 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <string.h>
 
 #include "settings.h"
+#include "u1_reply.h"
+
+// What the wire has actually told us. U1_BACKEND_AUTO means "nobody has said
+// yet"; u1BackendEffective() turns that into a working assumption.
+static uint8_t s_detected      = U1_BACKEND_AUTO;
+static bool    s_presenceOnly  = false;
+
+uint8_t u1BackendEffective() {
+  if (g_settings.printerBackend != U1_BACKEND_AUTO) return g_settings.printerBackend;
+  if (s_detected != U1_BACKEND_AUTO) return s_detected;
+  return U1_BACKEND_EXTENDED;   // see the note in u1_client.h
+}
+
+bool u1BackendKnown() {
+  return g_settings.printerBackend != U1_BACKEND_AUTO || s_detected != U1_BACKEND_AUTO;
+}
+
+void u1BackendForget() {
+  s_detected     = U1_BACKEND_AUTO;
+  s_presenceOnly = false;
+}
+
+bool u1SlotsPresenceOnly() { return s_presenceOnly; }
+
+const char *u1BackendName(uint8_t backend) {
+  switch (backend) {
+    case U1_BACKEND_EXTENDED: return "Extended Firmware";
+    case U1_BACKEND_STOCK:    return "stock + Bespok3d";
+    default:                  return "detecting";
+  }
+}
+
+// Only latch from evidence, and only while the user has left it on AUTO — an
+// explicit choice should not be quietly overridden by a probe.
+static void backendObserved(uint8_t what) {
+  if (g_settings.printerBackend == U1_BACKEND_AUTO) s_detected = what;
+}
 
 static String baseUrl() {
   String u = "http://";
@@ -67,11 +105,20 @@ bool u1FetchSlots(U1Slot slots[4], String &errorOut) {
 
   JsonArrayConst info = doc["result"]["status"]["filament_detect"]["info"];
   if (info.isNull()) {
-    // Presence still worked, so don't fail the whole call — stock firmware
-    // simply won't have this object.
-    errorOut = "filament_detect not exposed (stock firmware?)";
+    // Presence still worked, so don't fail the whole call — the object simply
+    // is not there. That is the signature of the Bespok3d plugin on stock
+    // firmware: it serves the setter but registers no get_status, so this is
+    // also the cheapest reliable way to tell the two backends apart.
+    if (i > 0) {
+      backendObserved(U1_BACKEND_STOCK);
+      s_presenceOnly = true;
+    }
+    errorOut = "filament_detect not queryable — slot presence only";
     return i > 0;
   }
+
+  backendObserved(U1_BACKEND_EXTENDED);
+  s_presenceOnly = false;
 
   i = 0;
   for (JsonObjectConst o : info) {
@@ -104,7 +151,9 @@ bool u1FetchSlots(U1Slot slots[4], String &errorOut) {
   return true;
 }
 
-void u1BuildPayload(const SpoolData &d, uint8_t channel, String &out) {
+void u1BuildPayload(const SpoolData &d, uint8_t channel, String &out,
+                    uint8_t backend) {
+  if (backend == U1_BACKEND_AUTO) backend = u1BackendEffective();
   JsonDocument doc;
   doc["channel"] = channel;
   JsonObject info = doc["info"].to<JsonObject>();
@@ -127,7 +176,12 @@ void u1BuildPayload(const SpoolData &d, uint8_t channel, String &out) {
   if (g_settings.sendCardUid && d.uidLen > 0) {
     JsonArray uid = info["CARD_UID"].to<JsonArray>();
     for (uint8_t i = 0; i < d.uidLen; i++) uid.add(d.uid[i]);
-    info["CARD_TYPE"] = d.cardType;
+    // CARD_TYPE is an Extended Firmware field. The Bespok3d handler validates
+    // the whole `info` object against a fixed list and raises
+    //     "unsupported fields: CARD_TYPE"
+    // which fails the entire request — so on stock we simply leave it out.
+    // CARD_UID itself is on their accepted list and stays.
+    if (backend != U1_BACKEND_STOCK) info["CARD_TYPE"] = d.cardType;
   }
 
   if (d.sku) info["SKU"] = d.sku;
@@ -151,42 +205,82 @@ SendResult u1Send(const SpoolData &d, uint8_t channel) {
     return r;
   }
 
-  String payload;
-  u1BuildPayload(d, channel, payload);
+  const String url     = baseUrl() + "/printer/filament_detect/set";
+  uint8_t      backend = u1BackendEffective();
 
-  WiFiClient client;
-  HTTPClient http;
-  http.setTimeout(6000);
-  String url = baseUrl() + "/printer/filament_detect/set";
-  if (!http.begin(client, url)) {
-    r.error = "could not open " + url;
+  // Two passes at most. The second only happens when the first was refused for
+  // carrying a field this backend does not know, which is exactly the
+  // Extended-vs-stock mismatch — so we drop those fields and go again.
+  for (uint8_t attempt = 0; attempt < 2; attempt++) {
+    String payload;
+    u1BuildPayload(d, channel, payload, backend);
+
+    WiFiClient client;
+    HTTPClient http;
+    http.setTimeout(6000);
+    if (!http.begin(client, url)) {
+      r.error = "could not open " + url;
+      return r;
+    }
+    http.addHeader("Content-Type", "application/json");
+    if (g_settings.apiKey[0]) http.addHeader("X-Api-Key", g_settings.apiKey);
+
+    r.httpCode = http.POST(payload);
+    r.body     = http.getString();
+    http.end();
+
+    if (r.httpCode <= 0) {
+      r.error = "HTTP error " + String(r.httpCode) + " (" +
+                HTTPClient::errorToString(r.httpCode) + ")";
+      return r;
+    }
+    if (r.httpCode < 200 || r.httpCode >= 300) {
+      r.error = "printer returned HTTP " + String(r.httpCode);
+      return r;
+    }
+
+    char    msg[160];
+    U1Reply reply = u1ClassifyReply(r.body.c_str(), msg, sizeof(msg));
+
+    if (reply == U1_REPLY_OK) {
+      // A backend that accepted an Extended-only field is an Extended backend.
+      // Worth latching: it means the readback is worth attempting.
+      if (backend == U1_BACKEND_EXTENDED && g_settings.sendCardUid && d.uidLen > 0) {
+        backendObserved(U1_BACKEND_EXTENDED);
+      }
+      r.ok = true;
+      return r;
+    }
+
+    if (reply == U1_REPLY_BAD_FIELD && backend != U1_BACKEND_STOCK) {
+      if (g_settings.printerBackend != U1_BACKEND_AUTO) {
+        // The user pinned this. Say so plainly rather than quietly working
+        // around a setting they chose on purpose.
+        r.error = "printer refused a field this firmware sent (" + String(msg) +
+                  "). Printer backend is pinned to \"" +
+                  u1BackendName(g_settings.printerBackend) +
+                  "\" — set it to Auto, or to stock + Bespok3d.";
+        return r;
+      }
+      backendObserved(U1_BACKEND_STOCK);
+      backend = U1_BACKEND_STOCK;
+      continue;                       // one retry, without the extra fields
+    }
+
+    // Reaching here on BAD_FIELD means the retry was ALSO refused for a field
+    // — so it is not the Extended/stock mismatch and there is nothing left to
+    // strip. Say what actually happened rather than "unexpected response".
+    if (reply == U1_REPLY_BAD_FIELD || reply == U1_REPLY_ERROR) {
+      r.error = "printer refused it: " + String(msg);
+    } else {
+      r.error = "unexpected response: " + r.body;
+    }
     return r;
   }
-  http.addHeader("Content-Type", "application/json");
-  if (g_settings.apiKey[0]) http.addHeader("X-Api-Key", g_settings.apiKey);
 
-  r.httpCode = http.POST(payload);
-  r.body     = http.getString();
-  http.end();
-
-  if (r.httpCode <= 0) {
-    r.error = "HTTP error " + String(r.httpCode) + " (" +
-              HTTPClient::errorToString(r.httpCode) + ")";
-    return r;
-  }
-  if (r.httpCode < 200 || r.httpCode >= 300) {
-    r.error = "printer returned HTTP " + String(r.httpCode);
-    return r;
-  }
-
-  // The endpoint answers {"state":"success"} — treat anything else as a
-  // soft failure so the UI can surface it.
-  if (r.body.indexOf("success") < 0 && r.body.indexOf("\"result\"") < 0) {
-    r.error = "unexpected response: " + r.body;
-    return r;
-  }
-
-  r.ok = true;
+  // Unreachable: every path above returns, and the only `continue` is on the
+  // first pass. Here so a future third case cannot fall out silently ok.
+  if (r.error.length() == 0) r.error = "send gave up after two attempts";
   return r;
 }
 
