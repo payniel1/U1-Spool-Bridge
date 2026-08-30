@@ -268,17 +268,18 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
-Two binaries ship, one per chip. Measured on the images in the **v1.15.3**
+Two binaries ship, one per chip. Measured on the images in the **v1.16.0**
 release:
 
-| Image | Size | OTA slot | Used |
-|---|---|---|---|
-| `firmware-c5.bin` | 1,573,424 | 3,342,336 &nbsp;(`default_8MB`) | 47.1% |
-| `firmware-c3.bin` | 1,494,416 | 1,966,080 &nbsp;(`min_spiffs`) | 76.0% |
+| Image | Size | OTA slot | Used | Linked | Static RAM |
+|---|---|---|---|---|---|
+| `firmware-c5.bin` | 1,580,016 | 3,342,336 &nbsp;(`default_8MB`) | 47.3% | 45.0% | 60,492 |
+| `firmware-c3.bin` | 1,501,008 | 1,966,080 &nbsp;(`min_spiffs`) | 76.3% | 72.5% | 47,060 |
 
-Those are whole images as flashed, which is the figure that has to fit the slot.
-PlatformIO's own "Flash used" line reports the linked size instead and lands
-about 80 KB lower.
+**Size** is the whole image as flashed, which is the figure that has to fit the
+slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
+excludes segment headers and padding and lands about 75 KB lower. Both are
+quoted because the build prints one and the OTA slot cares about the other.
 
 The C3 is the smaller build because the 5 GHz radio code compiles out. The XIAO
 C5's 8 MB layout gives two 3.19 MB app slots; the C3 gets two 1.875 MB slots from
@@ -309,14 +310,13 @@ polarity); everything else keys off the SoC. The 5 GHz controls appear from
 `SOC_WIFI_SUPPORT_5G`, and the C3 and C5 route UART through the GPIO matrix, so
 any free pin can be RX or TX.
 
-Built and verified on non-XIAO boards (on an earlier 1.15.x build — the
-figures drift up a little with each release, but the headroom is the point):
+Built and verified on non-XIAO boards, all figures from the 1.16.0 build:
 
-| Board id | Env | Flash used | Static RAM |
-|---|---|---|---|
-| `esp32-c3-devkitm-1` | `seeed_xiao_esp32c3`, repinned | 73.3% | 47,840 |
-| `nologo_esp32c3_super_mini` | `seeed_xiao_esp32c3`, repinned | 72.3% | 47,052 |
-| `esp32-c5-devkitc1-n4` | **`esp32-c5-devkitc-1`** | 77.0% | 60,380 |
+| Board id | Env | Linked | Image / slot | Static RAM |
+|---|---|---|---|---|
+| `esp32-c3-devkitm-1` | `seeed_xiao_esp32c3`, repinned | 73.6% | — | 47,840 |
+| `nologo_esp32c3_super_mini` | `seeed_xiao_esp32c3`, repinned | 72.6% | — | 47,060 |
+| `esp32-c5-devkitc1-n4` | **`esp32-c5-devkitc-1`** | 77.3% | 81.1% | 60,380 |
 
 Two things you must set per board:
 
@@ -366,8 +366,10 @@ updates — it just halves the OTA slot and strands most of the flash. That is
 the case the pre-build warning above exists to catch.
 
 On flash headroom: a 4 MB C5 devkit is much tighter than the 8 MB XIAO. The
-same app that fills 47% of a XIAO C5 slot fills about **80%** of a `min_spiffs`
-slot. Still fine, ~380 KB spare, but it is the number to watch.
+same app that fills 47.3% of a XIAO C5 slot fills **81.1%** of a `min_spiffs`
+slot — 1,594,592 bytes of 1,966,080, so about 363 KB spare. Still fine, and the
+pre-build check will not let a table that does not fit through, but it is the
+number to watch as features land.
 
 ---
 
