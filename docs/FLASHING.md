@@ -413,6 +413,30 @@ There are two builds now, and they are not interchangeable:
 | Seeed XIAO ESP32-C5 | `seeed_xiao_esp32c5` | `firmware-c5.bin` | 8 MB, dual band |
 | Seeed XIAO ESP32-C3 | `seeed_xiao_esp32c3` | `firmware-c3.bin` | 4 MB, 2.4 GHz only |
 
+> **The released images are for the two XIAOs only.**
+>
+> Do not flash them to a devkit, even a C5 devkit — the chip id matches, so
+> nothing will stop you.
+>
+> Two things are wrong with it. The **pins**: the release is built with the
+> XIAO's GPIO 23/24/25, and a devkit's PN532 is on GPIO 0/1/10, so the reader
+> is simply never found. And the **partition table**, which is the one that
+> does damage. `firmware-c5-FACTORY.bin` carries the XIAO's 8 MB table:
+>
+> ```
+> app0   app  ota_0  off=0x010000  size=0x330000
+> app1   app  ota_1  off=0x340000  size=0x330000   <- ends at 8.00 MB
+> ```
+>
+> A C5 devkit is a **4 MB** part. `app0` happens to end at 3.25 MB, so the box
+> boots and looks perfectly healthy — and then the first OTA writes `app1` past
+> the end of flash. The failure arrives weeks later, during a fleet update, on
+> a box you had no reason to suspect.
+>
+> **For any devkit, build from source.** `pio run -e esp32-c5-devkitc-1 -t
+> upload` sets the right pins and the right table, and the pre-build check
+> refuses a table that does not fit the board.
+
 Same wiring on both &mdash; D4, D5 and D2 &mdash; so a drybox harness moves
 between them unmodified; only the GPIO numbers behind those pads differ, and
 those are build flags. The C3 build must use `min_spiffs`: the app is ~1.41 MB

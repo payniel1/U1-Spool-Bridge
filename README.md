@@ -54,7 +54,7 @@ printer read it the normal way.
 |---|---|
 | **Seeed XIAO ESP32-C5** | The default target. Dual-band Wi-Fi 6, 8 MB flash, one USB-C port, thumbnail-sized. |
 | **…or a Seeed XIAO ESP32-C3** | 4 MB, 2.4 GHz only, no user LED. Same wiring, same enclosure. See [docs/wiring.html](docs/wiring.html). |
-| …or a C5 devkit | `esp32-c5-devkitc-1`. Same firmware, different pins. |
+| …or an **ESP32-C5-DevKitC-1** | Env `esp32-c5-devkitc-1`, which is also the **N4**. Same firmware, different pins. **Build it yourself — the released `.bin` files are XIAO-only.** |
 | PN532 NFC module | The common red "V3" breakout. **Both DIP switches OFF.** |
 | 4 jumper wires | Plus power. |
 | 100 µF + 0.1 µF capacitors | Per module. Not optional — see [docs/capacitors.html](docs/capacitors.html). |
@@ -104,7 +104,7 @@ Only the GPIO numbers change per board:
 |---|---|---|---|---|
 | **XIAO ESP32-C5** | D4 · GPIO23 | D5 · GPIO24 | D2 · GPIO25 | ships, in service |
 | **XIAO ESP32-C3** | D4 · GPIO6 | D5 · GPIO7 | D2 · GPIO4 | ships |
-| **ESP32-C5-DevKitC-1** | GPIO0 | GPIO1 | GPIO10 | ships |
+| **ESP32-C5-DevKitC-1** *(incl. N4)* | GPIO0 | GPIO1 | GPIO10 | builds, no prebuilt image |
 | C3 devkit / supermini | GPIO6 | GPIO7 | GPIO4 | suggested, builds |
 
 **The two XIAOs use the same three pads**, D4, D5 and D2, so a drybox harness
@@ -113,8 +113,9 @@ moves between a C5 and a C3 unmodified. Both are drawn out:
 **[docs/wiring-c3.html](docs/wiring-c3.html)** for the C3 — colour-coded, with
 the DIP switches and the pins to avoid.
 
-The last row is a recommendation that compiles and avoids every reserved pin
-but has not been on a bench; the three above it are configurations that ship.
+The two XIAO rows are what ships as a prebuilt binary. The two devkit rows
+build clean and avoid every reserved pin, but no image is released for them —
+you build those from source.
 
 Set them in `platformio.ini` with `-DPIN_PN532_RX=…`, `-DPIN_PN532_TX=…`,
 `-DPIN_PN532_RST=…` if you rewire or use another board.
@@ -182,6 +183,9 @@ pio run -e seeed_xiao_esp32c3 -t upload      # XIAO C3
 pio run -e esp32-c5-devkitc-1 -t upload      # C5 devkit
 pio device monitor                           # 115200 baud
 pio test -e native                           # decoder tests on your PC, no hardware
+
+python3 scripts/check_partitions.py --selftest   # partition guard, no toolchain
+python3 scripts/test_check_partitions.py         # ...and its PlatformIO glue
 ```
 
 **The two images are not interchangeable**, and the fleet updater enforces
@@ -249,19 +253,31 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `seeed_xiao_esp32c5-ota` | The same env with `upload_protocol = espota` |
 | `seeed_xiao_esp32c3` | The XIAO C3, `min_spiffs`. Ships as `firmware-c3.bin`. |
 | `seeed_xiao_esp32c3-ota` | The same, over the network |
-| `esp32-c5-devkitc-1` | Same firmware, devkit pins |
+| `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
-Two binaries ship, one per chip. Sizes as built:
+Two binaries ship, one per chip. Measured on the images in the **v1.15.3**
+release:
 
-| | flash | of its OTA slot | static RAM |
+| Image | Size | OTA slot | Used |
 |---|---|---|---|
-| C5 | 1,493,951 | 44.7% of 8 MB | 59,460 |
-| C3 | 1,414,831 | 72.0% of `min_spiffs` | 46,012 |
+| `firmware-c5.bin` | 1,573,424 | 3,342,336 &nbsp;(`default_8MB`) | 47.1% |
+| `firmware-c3.bin` | 1,494,416 | 1,966,080 &nbsp;(`min_spiffs`) | 76.0% |
+
+Those are whole images as flashed, which is the figure that has to fit the slot.
+PlatformIO's own "Flash used" line reports the linked size instead and lands
+about 80 KB lower.
 
 The C3 is the smaller build because the 5 GHz radio code compiles out. The XIAO
 C5's 8 MB layout gives two 3.19 MB app slots; the C3 gets two 1.875 MB slots from
 `min_spiffs`. Either way there are two, which is what makes OTA possible.
+
+**Both released images are XIAO builds.** They carry XIAO pins and the XIAO's
+partition table, and nothing at flash time checks the board — only the chip. On
+a 4 MB C5 devkit the C5 factory image boots and looks healthy, then the first
+OTA writes off the end of flash, because that table puts `app1` at 0x340000 and
+runs it to 8 MB. Build devkits from source; see
+[docs/FLASHING.md](docs/FLASHING.md#two-chips-two-images).
 
 All six environments build with no warnings under `-Wall -Wextra`.
 
@@ -281,13 +297,14 @@ polarity); everything else keys off the SoC. The 5 GHz controls appear from
 `SOC_WIFI_SUPPORT_5G`, and the C3 and C5 route UART through the GPIO matrix, so
 any free pin can be RX or TX.
 
-Built and verified on non-XIAO boards:
+Built and verified on non-XIAO boards (on an earlier 1.15.x build — the
+figures drift up a little with each release, but the headroom is the point):
 
-| Board | Flash used | Static RAM |
-|---|---|---|
-| `esp32-c3-devkitm-1` | 73.3% | 47,840 |
-| `nologo_esp32c3_super_mini` | 72.3% | 47,052 |
-| `esp32-c5-devkitc1-n4` (4 MB) | 77.0% | 60,380 |
+| Board id | Env | Flash used | Static RAM |
+|---|---|---|---|
+| `esp32-c3-devkitm-1` | `seeed_xiao_esp32c3`, repinned | 73.3% | 47,840 |
+| `nologo_esp32c3_super_mini` | `seeed_xiao_esp32c3`, repinned | 72.3% | 47,052 |
+| `esp32-c5-devkitc1-n4` | **`esp32-c5-devkitc-1`** | 77.0% | 60,380 |
 
 Two things you must set per board:
 
@@ -303,12 +320,42 @@ both, with the sums in the error. If you genuinely want a single-slot build, set
 `custom_allow_single_ota = yes` in that environment.
 
 Rule of thumb: 8 MB board → `default_8MB.csv`, 4 MB board → `min_spiffs.csv`.
+The check also warns — without failing — when a table uses half the board's
+flash or less, which is the usual sign an env has been pointed at a bigger
+variant of the same board.
 
 Two smaller caveats. `ARDUINO_USB_MODE=1` and `ARDUINO_USB_CDC_ON_BOOT=1` are in
 the shared flags because every board here has native USB; on a board whose USB
 socket is a CH340 or CP2102 bridge, drop them and the console moves to UART0. And
 a board whose variant defines neither `LED_BUILTIN` nor `RGB_BUILTIN` loses the
 status light silently — the XIAO C3 is one such board.
+
+### The four C5 devkit board ids
+
+Espressif sells one ESP32-C5-DevKitC-1 and PlatformIO carries four ids for it.
+Two of them are the same part:
+
+`esp32-c5-devkitc-1` and `esp32-c5-devkitc1-n4` have **byte-identical board
+definitions** in the pinned platform apart from the display name — `esp32c5`
+variant, 4 MB flash, no PSRAM. If you have an N4 devkit, use the
+`esp32-c5-devkitc-1` environment unchanged. There is nothing to configure.
+
+The other two are not the same part, and this environment's `min_spiffs.csv`
+is the wrong table for them:
+
+| Board id | Flash | PSRAM | Table |
+|---|---|---|---|
+| `esp32-c5-devkitc-1`, `esp32-c5-devkitc1-n4` | 4 MB | — | `min_spiffs.csv` — what the env sets |
+| `esp32-c5-devkitc1-n8r4` | 8 MB | 4 MB | `default_8MB.csv` |
+| `esp32-c5-devkitc1-n16r4` | 16 MB | 4 MB | `default_16MB.csv` |
+
+Leaving `min_spiffs` on an 8 or 16 MB board is not dangerous — it boots, it
+updates — it just halves the OTA slot and strands most of the flash. That is
+the case the pre-build warning above exists to catch.
+
+On flash headroom: a 4 MB C5 devkit is much tighter than the 8 MB XIAO. The
+same app that fills 47% of a XIAO C5 slot fills about **80%** of a `min_spiffs`
+slot. Still fine, ~380 KB spare, but it is the number to watch.
 
 ---
 
@@ -962,6 +1009,13 @@ Append, and the loader overlays the older, shorter blob onto defaults.
 
 The decoders deliberately don't touch Arduino APIs, which is why `pio test -e native`
 can run them on your laptop against synthetic tag dumps.
+
+The partition guard is arranged the same way. Its decision logic is a pure
+function over (table, board), so `scripts/check_partitions.py --selftest` can
+check every board-and-table combination that matters without a toolchain, and
+`scripts/test_check_partitions.py` drives the PlatformIO side against a stub
+`env`. A guard whose whole job is to fail a build is otherwise only tested on
+the day it fires.
 
 ## Troubleshooting
 
