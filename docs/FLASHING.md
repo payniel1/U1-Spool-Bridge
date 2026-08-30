@@ -222,9 +222,21 @@ produced a single combined image:
 Bootloader, partition table and app in one file, flashed at offset `0x0`:
 
 ```bash
+# XIAO ESP32-C5
 esptool --chip esp32c5 --port /dev/ttyACM0 --baud 921600 \
         write-flash 0x0 .pio/build/seeed_xiao_esp32c5/firmware.factory.bin
+
+# XIAO ESP32-C3
+esptool --chip esp32c3 --port /dev/ttyACM0 --baud 921600 \
+        write-flash 0x0 .pio/build/seeed_xiao_esp32c3/firmware.factory.bin
 ```
+
+**Always `0x0`, on both chips** — and that is the point of the merged image.
+The bootloader does not live in the same place on the two parts: it starts at
+`0x2000` on the C5 and at `0x0` on the C3. The factory image is padded so each
+piece lands where its chip expects it, so you never have to know that. Flashing
+the *plain* `firmware.bin` at `0x10000` instead only works on a chip that
+already has a bootloader and partition table on it.
 
 (esptool v4 and older spell it `write_flash`.) This is faster than `pio run`,
 and it's the file to copy to another machine — that machine needs only
