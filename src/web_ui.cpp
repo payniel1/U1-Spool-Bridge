@@ -574,6 +574,8 @@ void webBegin() {
         }
 
         s_otaBytes += len;
+        otaNoteActivity();   // the transfer is alive; hold off the stall watchdog
+
         size_t total = req->contentLength();
         if (total) {
           int pct = (int)(((index + len) * 100ULL) / total);

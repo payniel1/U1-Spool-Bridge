@@ -10,6 +10,11 @@
 // Both write to the inactive OTA slot and only switch the boot partition once
 // the whole image has landed and verified, so a failed or interrupted update
 // leaves the box running exactly what it was running before.
+//
+// A REFUSED upload cleans up after itself. One whose connection dies mid-image
+// used to not: the final chunk never arrived, otaBusy() stayed true, and the
+// box sat deaf until someone power-cycled it. otaLoop() now watches for that —
+// see ota_stall.h.
 // ---------------------------------------------------------------------------
 #pragma once
 
@@ -22,8 +27,13 @@ void otaBegin();
 void otaLoop();
 
 // True while an update is being written — the main loop stops polling the
-// reader and talking to the printer for the duration.
+// reader and talking to the printer for the duration. Cleared by the stall
+// watchdog if the bytes stop arriving, so this can no longer latch on.
 bool otaBusy();
+
+// Called on every chunk that lands, to say the transfer is still alive. The
+// watchdog in otaLoop() measures from the last one of these.
+void otaNoteActivity();
 
 // Progress, for the UI. 0..100, or -1 when idle.
 int otaProgressPct();

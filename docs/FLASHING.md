@@ -512,6 +512,30 @@ running exactly what it was before. Retry it, or Install to it directly.
 Settings before starting; it is used for every box in the run, so they all need
 the same one.
 
+### If an upload stops part-way
+
+Two different things look the same from the browser and they need different
+responses.
+
+**Refused** — a specific message: wrong chip, wrong OTA password, OTA switched
+off, image failed verification. That path cleans up after itself. Fix the
+reason and press Install again; no reboot needed.
+
+**Stalled** — the progress bar simply stops and the box goes quiet. The
+connection died mid-image, so the final chunk never arrived. Nothing is
+half-written (the image only becomes active after the whole thing verifies),
+but the box parks itself: while an upload is in flight the main loop skips the
+reader, the printer and any fleet work, and a retry is refused because the
+write is still open.
+
+From 1.16.1 the box gets itself out of that: if no bytes arrive for 45 seconds
+it abandons the upload, logs *"upload stopped part-way — abandoned it, the box
+is back to normal"*, and carries on. Wait a minute, then retry.
+
+**On 1.16.0 and earlier there is no such timeout** — a stalled upload leaves
+the box deaf until it is power-cycled. If you are updating a fleet off that
+version, that is the one failure worth walking over for.
+
 ### What happens if an update goes wrong
 
 The image is written to the **inactive** app slot, and the boot partition is

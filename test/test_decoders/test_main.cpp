@@ -11,6 +11,7 @@
 #include "send_gate.h"
 #include "spool_data.h"
 #include "spoolman_fields.h"
+#include "ota_stall.h"
 #include "u1_reply.h"
 
 // ---------------------------------------------------------------------------
@@ -813,6 +814,50 @@ void test_reply_message_is_truncated_not_overrun() {
   TEST_ASSERT_EQUAL(7u, strlen(m));
 }
 
+
+// ---------------------------------------------------------------------------
+// The OTA stall watchdog.
+//
+// A refused upload cleans up after itself; one whose connection dies does not,
+// and otaBusy() would latch on forever with the whole main loop gated behind
+// it. The arithmetic is the part worth pinning down: millis() wraps roughly
+// every 49.7 days, so now < lastActivity is an ordinary state a few weeks into
+// an uptime, and a signed comparison here would make a box that has been up
+// that long unrecoverable.
+// ---------------------------------------------------------------------------
+
+void test_stall_idle_never_fires() {
+  // Not busy: no upload to abandon, however long ago "activity" was.
+  TEST_ASSERT_FALSE(otaStalled(false, 1000000, 0, OTA_STALL_MS));
+  TEST_ASSERT_FALSE(otaStalled(false, 0, 0, OTA_STALL_MS));
+}
+
+void test_stall_live_transfer_survives() {
+  // A chunk one millisecond inside the window keeps the upload alive.
+  TEST_ASSERT_FALSE(otaStalled(true, 100000, 100000 - (OTA_STALL_MS - 1), OTA_STALL_MS));
+  TEST_ASSERT_FALSE(otaStalled(true, 100000, 100000, OTA_STALL_MS));
+}
+
+void test_stall_fires_at_the_boundary() {
+  TEST_ASSERT_TRUE(otaStalled(true, 100000, 100000 - OTA_STALL_MS, OTA_STALL_MS));
+  TEST_ASSERT_TRUE(otaStalled(true, 100000, 0, OTA_STALL_MS));
+}
+
+void test_stall_survives_millis_wraparound() {
+  // Uptime rolls over mid-upload: last chunk just before the wrap, now just
+  // after. That is 26 ms of elapsed time, not a 49-day gap.
+  const uint32_t last = 0xFFFFFFF0u;
+  TEST_ASSERT_FALSE(otaStalled(true, 10, last, OTA_STALL_MS));
+  TEST_ASSERT_FALSE(otaStalled(true, 0xFFFFFFFFu, last, OTA_STALL_MS));
+  // And it must still fire once the window really has passed across the wrap.
+  TEST_ASSERT_TRUE(otaStalled(true, last + OTA_STALL_MS, last, OTA_STALL_MS));
+}
+
+void test_stall_zero_timeout_is_immediate() {
+  // Not used in the firmware, but a zero must not mean "never".
+  TEST_ASSERT_TRUE(otaStalled(true, 5, 5, 0));
+}
+
 int main(int, char **) {
   UNITY_BEGIN();
   RUN_TEST(test_sha256_vector);
@@ -872,5 +917,10 @@ int main(int, char **) {
   RUN_TEST(test_reply_truncated_still_caught);
   RUN_TEST(test_reply_garbage_and_empty);
   RUN_TEST(test_reply_message_is_truncated_not_overrun);
+  RUN_TEST(test_stall_idle_never_fires);
+  RUN_TEST(test_stall_live_transfer_survives);
+  RUN_TEST(test_stall_fires_at_the_boundary);
+  RUN_TEST(test_stall_survives_millis_wraparound);
+  RUN_TEST(test_stall_zero_timeout_is_immediate);
   return UNITY_END();
 }

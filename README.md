@@ -268,13 +268,13 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
-Two binaries ship, one per chip. Measured on the images in the **v1.16.0**
+Two binaries ship, one per chip. Measured on the images in the **v1.16.1**
 release:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,580,016 | 3,342,336 &nbsp;(`default_8MB`) | 47.3% | 45.0% | 60,492 |
-| `firmware-c3.bin` | 1,501,008 | 1,966,080 &nbsp;(`min_spiffs`) | 76.3% | 72.5% | 47,060 |
+| `firmware-c5.bin` | 1,580,368 | 3,342,336 &nbsp;(`default_8MB`) | 47.3% | 45.1% | 60,492 |
+| `firmware-c3.bin` | 1,501,344 | 1,966,080 &nbsp;(`min_spiffs`) | 76.4% | 72.6% | 47,060 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -1051,6 +1051,7 @@ include/
   tag_reader.h    PN532 front end
   u1_client.h     Moonraker client, and which backend is serving it
   u1_reply.h      reading the printer's answer (hardware-free, unit-tested)
+  ota_stall.h     when a dead upload has to be abandoned (hardware-free, unit-tested)
   spoolman.h      Spoolman client
   spoolman_fields.h  card_uids / JSON encoding (hardware-free, unit-tested)
   send_gate.h     when a scan may reach the printer (hardware-free, unit-tested)
@@ -1066,7 +1067,7 @@ src/
   dec_openspool.cpp  NDEF TLV walk + OpenSpool JSON
   dec_bambu.cpp      key derivation + block map
   dec_qidi.cpp       material/colour code tables
-test/test_decoders/  57 host-side tests
+test/test_decoders/  62 host-side tests
 arduino/u1_spool_bridge/   include/ + src/ flattened into an Arduino IDE sketch
 docs/               flashing guides, wiring and capacitor pages
 licenses/           GPL-3.0, LGPL-3.0 and LGPL-2.1 texts, for binary releases
