@@ -1,0 +1,448 @@
+<title>C3 Drybox Wiring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --bg:#F7F5F2;
+    --panel:#FFFFFF;
+    --ink:#191D23;
+    --muted:#6F6A63;
+    --rule:#DFD9D1;
+    --rule-soft:#EBE6DF;
+    --accent:#1F6FB2;
+
+    --w-vcc:#B23A2B;
+    --w-gnd:#4A5058;
+    --w-rx:#1F6FB2;
+    --w-tx:#9A6410;
+    --w-rst:#6A45A8;
+
+    --ok-bg:#E8F1E9;  --ok-ink:#245C33;  --ok-line:#BDD8C4;
+    --warn-bg:#FBF0DC; --warn-ink:#7A5310; --warn-line:#E6D3AC;
+
+    --shadow:0 1px 2px rgba(25,29,35,.05), 0 8px 24px -16px rgba(25,29,35,.25);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181D;
+      --panel:#1C2027;
+      --ink:#E7EAEF;
+      --muted:#949AA4;
+      --rule:#2C323B;
+      --rule-soft:#242931;
+      --accent:#6FB2E8;
+      --w-vcc:#E2705F;
+      --w-gnd:#9AA2AE;
+      --w-rx:#6FB2E8;
+      --w-tx:#D9A44B;
+      --w-rst:#A98BE0;
+      --ok-bg:#1B2A20;  --ok-ink:#8FCFA1;  --ok-line:#2E4A38;
+      --warn-bg:#2B2415; --warn-ink:#DFB765; --warn-line:#4A3E22;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181D;
+    --panel:#1C2027;
+    --ink:#E7EAEF;
+    --muted:#949AA4;
+    --rule:#2C323B;
+    --rule-soft:#242931;
+    --accent:#6FB2E8;
+
+    --w-vcc:#E2705F;
+    --w-gnd:#9AA2AE;
+    --w-rx:#6FB2E8;
+    --w-tx:#D9A44B;
+    --w-rst:#A98BE0;
+
+    --ok-bg:#1B2A20;  --ok-ink:#8FCFA1;  --ok-line:#2E4A38;
+    --warn-bg:#2B2415; --warn-ink:#DFB765; --warn-line:#4A3E22;
+
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:400 16px/1.62 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:64rem;
+    margin:0 auto;
+    padding:56px 24px 96px;
+    display:flex;
+    flex-direction:column;
+    gap:44px;
+  }
+
+  .lede{display:flex;flex-direction:column;gap:14px}
+  .eyebrow{
+    font:600 11.5px/1 "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font:700 clamp(28px,4.4vw,42px)/1.08 "Archivo", system-ui, sans-serif;
+    letter-spacing:-.022em;
+    margin:0;
+    text-wrap:balance;
+  }
+  .standfirst{
+    margin:0;
+    max-width:62ch;
+    font-size:17.5px;
+    color:var(--muted);
+  }
+
+  .verdict{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    background:var(--ok-bg);
+    border:1px solid var(--ok-line);
+    border-radius:10px;
+    padding:16px 18px;
+    color:var(--ok-ink);
+  }
+  .verdict .mark{
+    flex:none;
+    font:600 11px/1 "IBM Plex Mono", monospace;
+    letter-spacing:.1em;
+    border:1px solid currentColor;
+    border-radius:4px;
+    padding:5px 7px;
+    margin-top:2px;
+  }
+  .verdict p{margin:0;font-size:15.5px;max-width:60ch}
+  .verdict b{font-weight:600}
+
+  section{display:flex;flex-direction:column;gap:16px}
+  h2{
+    font:600 21px/1.2 "Archivo", system-ui, sans-serif;
+    letter-spacing:-.012em;
+    margin:0;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--rule);
+  }
+  p{margin:0;max-width:68ch}
+  .dim{color:var(--muted)}
+
+  figure{
+    margin:0;
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:12px;
+    padding:20px;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .scroller{overflow-x:auto}
+  figure svg{display:block;width:100%;min-width:640px;height:auto}
+  figcaption{
+    font-size:13.5px;
+    color:var(--muted);
+    max-width:68ch;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14.5px;
+    font-variant-numeric:tabular-nums;
+  }
+  th,td{
+    text-align:left;
+    padding:11px 14px;
+    border-bottom:1px solid var(--rule-soft);
+  }
+  th{
+    font:600 11px/1 "IBM Plex Mono", monospace;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+    border-bottom:1px solid var(--rule);
+    white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  code, .mono{font-family:"IBM Plex Mono", ui-monospace, monospace}
+  td code{font-size:13.5px}
+  .tbl{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .swatch{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:2px;
+    margin-right:8px;
+    vertical-align:baseline;
+  }
+
+  pre{
+    margin:0;
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:12px;
+    padding:16px 18px;
+    overflow-x:auto;
+    font:500 13.5px/1.7 "IBM Plex Mono", ui-monospace, monospace;
+    box-shadow:var(--shadow);
+  }
+
+  .notes{display:flex;flex-direction:column;gap:12px}
+  .note{
+    display:flex;gap:13px;align-items:flex-start;
+    border-left:2px solid var(--rule);
+    padding:2px 0 2px 15px;
+  }
+  .note.warn{border-left-color:var(--warn-line)}
+  .note h3{
+    margin:0 0 3px;
+    font:600 15px/1.35 "IBM Plex Sans", sans-serif;
+  }
+  .note p{font-size:14.5px;color:var(--muted);max-width:64ch}
+  .note .tag{
+    flex:none;margin-top:3px;
+    font:600 10px/1 "IBM Plex Mono", monospace;
+    letter-spacing:.1em;
+    padding:4px 6px;border-radius:4px;
+    background:var(--warn-bg);color:var(--warn-ink);
+    border:1px solid var(--warn-line);
+  }
+
+  .foot{
+    font-size:13.5px;color:var(--muted);
+    border-top:1px solid var(--rule);
+    padding-top:18px;max-width:68ch;
+  }
+
+  a{color:var(--accent)}
+  a:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="lede">
+    <span class="eyebrow">PN532 &rarr; Seeed XIAO ESP32-C3 &middot; HSU</span>
+    <h1>C3 Drybox Wiring</h1>
+    <p class="standfirst">What a drybox bridge looks like built on an ESP32-C3 instead of a C5 &mdash;
+      which, on the wiring side, is very nearly nothing at all.</p>
+  </header>
+
+  <div class="verdict">
+    <span class="mark">SAME LOOM</span>
+    <p>The C3 uses the <b>same three pads as your C5</b> &mdash; D4, D5 and D2. Only the GPIO
+      numbers behind them change, and those live in a build flag, not in your wiring. A drybox
+      harness built for a C5 plugs onto a C3 unmodified.</p>
+  </div>
+
+  <section>
+    <h2>The five connections</h2>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 900 440" role="img"
+             aria-label="Five wires from a XIAO ESP32-C3 to a PN532: 3V3 to VCC, GND to GND, D2 to RSTO, D4 to the pad marked SDA which carries the module's transmit, and D5 to the pad marked SCL which carries its receive.">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+            </marker>
+          </defs>
+
+          <rect x="62" y="70" width="196" height="320" rx="10"
+                fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/>
+          <rect x="120" y="52" width="80" height="22" rx="5"
+                fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+          <text x="160" y="67" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                font-size="9.5" fill="currentColor" opacity=".5">USB-C</text>
+          <text x="160" y="100" text-anchor="middle" font-family="Archivo, sans-serif"
+                font-size="14" font-weight="600" fill="currentColor">XIAO ESP32-C3</text>
+
+          <rect x="642" y="70" width="196" height="320" rx="10"
+                fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/>
+          <text x="740" y="100" text-anchor="middle" font-family="Archivo, sans-serif"
+                font-size="14" font-weight="600" fill="currentColor">PN532 V3</text>
+          <text x="740" y="118" text-anchor="middle" font-family="IBM Plex Sans, sans-serif"
+                font-size="10.5" fill="currentColor" opacity=".6">both DIP switches OFF</text>
+
+          <text x="248" y="154" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">3V3</text>
+          <line x1="258" y1="150" x2="642" y2="150" stroke="var(--w-vcc)" stroke-width="2.5"/>
+          <text x="652" y="154" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">VCC</text>
+          <text x="450" y="141" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--w-vcc)">3.3 V power</text>
+
+          <text x="248" y="200" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">GND</text>
+          <line x1="258" y1="196" x2="642" y2="196" stroke="var(--w-gnd)" stroke-width="2.5"/>
+          <text x="652" y="200" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">GND</text>
+          <text x="450" y="187" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--w-gnd)">ground</text>
+
+          <text x="248" y="250" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">D2</text>
+          <text x="248" y="264" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">GPIO4</text>
+          <line x1="264" y1="246" x2="636" y2="246" stroke="var(--w-rst)" stroke-width="2.5" marker-end="url(#ar)"/>
+          <text x="652" y="250" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">RSTO</text>
+          <text x="450" y="237" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--w-rst)">reset &mdash; pulsed on every init</text>
+
+          <text x="248" y="304" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">D4</text>
+          <text x="248" y="318" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">GPIO6 &middot; RX</text>
+          <line x1="636" y1="300" x2="264" y2="300" stroke="var(--w-rx)" stroke-width="2.5" marker-end="url(#ar)"/>
+          <text x="652" y="304" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">SDA</text>
+          <text x="652" y="318" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">= module TX</text>
+          <text x="450" y="291" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--w-rx)">module talks &rarr; board listens</text>
+
+          <text x="248" y="358" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">D5</text>
+          <text x="248" y="372" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">GPIO7 &middot; TX</text>
+          <line x1="264" y1="354" x2="636" y2="354" stroke="var(--w-tx)" stroke-width="2.5" marker-end="url(#ar)"/>
+          <text x="652" y="358" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="600" fill="currentColor">SCL</text>
+          <text x="652" y="372" font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity=".55">= module RX</text>
+          <text x="450" y="345" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--w-tx)">board talks &rarr; module listens</text>
+
+          <text x="652" y="418" font-family="IBM Plex Mono, monospace"
+                font-size="11" fill="currentColor" opacity=".45">IRQ &mdash; not connected</text>
+        </svg>
+      </div>
+      <figcaption>The two signal wires are the only subtle part. The pads are silkscreened
+        <span class="mono">SDA</span> and <span class="mono">SCL</span> because that is what the
+        module prints on them, but on HSU the SDA pad carries the module&rsquo;s <em>transmit</em>
+        and SCL its <em>receive</em>. The crossover happens in the firmware&rsquo;s pin
+        assignment, not in your loom &mdash; which is exactly why a C5 harness transfers
+        unchanged.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Connection table</h2>
+    <div class="tbl scroller">
+      <table>
+        <thead>
+          <tr><th>XIAO C3 pad</th><th>GPIO</th><th>PN532 pad</th><th>Carries</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="swatch" style="background:var(--w-vcc)"></span><code>3V3</code></td>
+            <td><code>&mdash;</code></td><td><code>VCC</code></td><td>3.3 V power</td>
+          </tr>
+          <tr>
+            <td><span class="swatch" style="background:var(--w-gnd)"></span><code>GND</code></td>
+            <td><code>&mdash;</code></td><td><code>GND</code></td><td>Ground</td>
+          </tr>
+          <tr>
+            <td><span class="swatch" style="background:var(--w-rst)"></span><code>D2</code></td>
+            <td><code>4</code></td><td><code>RSTO</code></td><td>Reset, driven by the board</td>
+          </tr>
+          <tr>
+            <td><span class="swatch" style="background:var(--w-rx)"></span><code>D4</code></td>
+            <td><code>6</code></td><td><code>SDA</code></td><td>Board&rsquo;s RX &larr; module&rsquo;s TX</td>
+          </tr>
+          <tr>
+            <td><span class="swatch" style="background:var(--w-tx)"></span><code>D5</code></td>
+            <td><code>7</code></td><td><code>SCL</code></td><td>Board&rsquo;s TX &rarr; module&rsquo;s RX</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="dim">Both DIP switches OFF selects HSU. IRQ stays unconnected; leaving the existing
+      wire on it is harmless if your harness already has one.</p>
+  </section>
+
+  <section>
+    <h2>What actually changes from the C5</h2>
+    <div class="tbl scroller">
+      <table>
+        <thead>
+          <tr><th>Pad</th><th>C5 GPIO</th><th>C3 GPIO</th><th>Wiring</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>D4</code> &rarr; SDA</td><td><code>23</code></td><td><code>6</code></td><td>unchanged</td></tr>
+          <tr><td><code>D5</code> &rarr; SCL</td><td><code>24</code></td><td><code>7</code></td><td>unchanged</td></tr>
+          <tr><td><code>D2</code> &rarr; RSTO</td><td><code>25</code></td><td><code>4</code></td><td>unchanged</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Three numbers, all of which live in one build flag:</p>
+    <pre>-DPIN_PN532_RX=6    ; D4, the pad marked SDA
+-DPIN_PN532_TX=7    ; D5, the pad marked SCL
+-DPIN_PN532_RST=4   ; D2</pre>
+  </section>
+
+  <section>
+    <h2>Things to know before you commit</h2>
+    <div class="notes">
+
+      <div class="note warn">
+        <span class="tag">PADS</span>
+        <div>
+          <h3>Three pads on the C3 are off limits</h3>
+          <p>D0 (GPIO2), D8 (GPIO8) and D9 (GPIO9) are strapping pins on the ESP32-C3 &mdash;
+            GPIO9 is BOOT. D6 and D7 (GPIO21/20) are UART0, which carries the boot log. The
+            D4/D5/D2 trio above avoids all five, which is the other reason it is the right
+            choice rather than merely a convenient one.</p>
+        </div>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">LED</span>
+        <div>
+          <h3>You lose the status light</h3>
+          <p>The XIAO ESP32-C3 variant defines neither <span class="mono">LED_BUILTIN</span> nor
+            <span class="mono">RGB_BUILTIN</span>, so the firmware&rsquo;s &ldquo;something needs
+            attention&rdquo; indicator compiles to nothing &mdash; silently, with no warning. If
+            you want it back, wire an LED and series resistor to D3 (GPIO5) or D1 (GPIO3) and
+            define <span class="mono">LED_BUILTIN</span> to match.</p>
+        </div>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">FLASH</span>
+        <div>
+          <h3>The default partition table will not fit</h3>
+          <p>The app is 1,414,833 bytes and the default 4 MB layout gives 1,310,720-byte OTA
+            slots. Build with <span class="mono">min_spiffs</span> (1.875 MB slots, 72% full) or
+            the fleet updater has nowhere to write.</p>
+        </div>
+      </div>
+
+      <div class="note">
+        <span class="tag" style="background:var(--ok-bg);color:var(--ok-ink);border-color:var(--ok-line)">CAPS</span>
+        <div>
+          <h3>Fit the capacitors anyway</h3>
+          <p>100&nbsp;&micro;F electrolytic plus 0.1&nbsp;&micro;F ceramic across the PN532&rsquo;s
+            VCC and GND, exactly as on the C5. The C3 has a little more headroom here &mdash; it
+            is 2.4&nbsp;GHz only, so it never hits the C5&rsquo;s 403&nbsp;mA 5&nbsp;GHz transmit
+            peak &mdash; but the PN532&rsquo;s RF field is what causes the sag, and that is
+            unchanged.</p>
+        </div>
+      </div>
+
+      <div class="note">
+        <span class="tag" style="background:var(--ok-bg);color:var(--ok-ink);border-color:var(--ok-line)">2.4</span>
+        <div>
+          <h3>No 5 GHz, permanently</h3>
+          <p>A C3 box joins on 2.4&nbsp;GHz and the band control disappears from its web UI. Worth
+            weighing if your 5&nbsp;GHz-only setting was there to dodge a congested
+            2.4&nbsp;GHz band.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="foot">Pin numbers read from the <span class="mono">XIAO_ESP32C3</span> and
+    <span class="mono">XIAO_ESP32C5</span> variant files in arduino-esp32, not from memory. The
+    firmware builds for the C3 as a shipping target
+    (<span class="mono">pio run -e seeed_xiao_esp32c3</span>); it has not been run on one.
+    The C5 equivalent of this page is <span class="mono">wiring.html</span>.</p>
+
+</div>

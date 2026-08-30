@@ -83,14 +83,58 @@ Set **both DIP switches OFF** and wire it as below.
 
 ### Wiring
 
-| PN532 pad | XIAO ESP32-C5 | C5-DevKitC-1 | What it carries |
-|---|---|---|---|
-| SDA | **D4** (GPIO23) | GPIO 0 | board **RX** ← the module's TX |
-| SCL | **D5** (GPIO24) | GPIO 1 | board **TX** → the module's RX |
-| RSTO | **D2** (GPIO25) | GPIO 10 | reset — **required** |
-| IRQ | **D0** (GPIO1) | — | unused; harmless to leave connected |
-| VCC | 3V3 | 3V3 | — |
-| GND | GND | GND | — |
+Five connections, and they mean the same thing on every board:
+
+| PN532 pad | What it carries |
+|---|---|
+| **SDA** | the module's **TX** → the board's **RX** |
+| **SCL** | the module's **RX** ← the board's **TX** |
+| **RSTO** | reset, driven by the board — **required** |
+| **VCC / GND** | 3V3 and ground |
+| IRQ | unused; harmless to leave connected |
+
+The pads keep their I2C names because that is what the module prints on them.
+HSU lives on the same header — I2C labels on the front of the board, HSU labels
+on the back — so nothing is rewired between transports; the crossover happens in
+the pin assignment, not in the loom. **Both DIP switches OFF.**
+
+Only the GPIO numbers change per board:
+
+| Board | SDA → | SCL → | RSTO → | Status |
+|---|---|---|---|---|
+| **XIAO ESP32-C5** | D4 · GPIO23 | D5 · GPIO24 | D2 · GPIO25 | ships, in service |
+| **XIAO ESP32-C3** | D4 · GPIO6 | D5 · GPIO7 | D2 · GPIO4 | ships |
+| **ESP32-C5-DevKitC-1** | GPIO0 | GPIO1 | GPIO10 | ships |
+| C3 devkit / supermini | GPIO6 | GPIO7 | GPIO4 | suggested, builds |
+
+**The two XIAOs use the same three pads**, D4, D5 and D2, so a drybox harness
+moves between a C5 and a C3 unmodified. Both are drawn out:
+**[docs/wiring.html](docs/wiring.html)** for the C5,
+**[docs/wiring-c3.html](docs/wiring-c3.html)** for the C3 — colour-coded, with
+the DIP switches and the pins to avoid.
+
+The last row is a recommendation that compiles and avoids every reserved pin
+but has not been on a bench; the three above it are configurations that ship.
+
+Set them in `platformio.ini` with `-DPIN_PN532_RX=…`, `-DPIN_PN532_TX=…`,
+`-DPIN_PN532_RST=…` if you rewire or use another board.
+
+> **Do not use the pins labelled SDA/SCL on a C3 devkit or supermini.** Their
+> variants map I2C to **GPIO8 and GPIO9**, and on the ESP32-C3 both are
+> strapping pins — GPIO9 is BOOT. On the nologo supermini GPIO8 is also the
+> onboard LED. The silkscreen is telling you where I2C is, not where it is safe
+> to put a serial port. GPIO6/GPIO7 are free and are what the XIAO C3 uses.
+
+**RSTO is not optional.** The driver pulses it on every init, and driving it by
+hand is the only recovery lever there is once a module has stopped answering.
+
+Pins to leave alone:
+
+- **ESP32-C3** (all boards): GPIO2, GPIO8, GPIO9 are strapping pins, GPIO9 is
+  BOOT; GPIO20/21 are UART0 and carry the boot log; GPIO18/19 are USB.
+- **XIAO ESP32-C5**: D3 (GPIO7) is a strapping pin, D6/D7 are UART0, and the
+  underside pads are JTAG.
+- **ESP32-C5 devkit**: avoid GPIO 2/7/27/28, 11/12 and 13/14.
 
 The pads keep their I2C names because that is what the module prints on them; the
 firmware drives them as a serial port. Change any of them in `platformio.ini`
@@ -103,8 +147,9 @@ Pins to leave alone: on the XIAO, D3 (GPIO7) is a strapping pin, D6/D7 are
 UART0, and the underside pads are JTAG. On the C5 devkit avoid GPIO 2/7/27/28,
 11/12 and 13/14.
 
-**[docs/wiring.html](docs/wiring.html) is the same thing as a diagram** — open it in
-a browser for a colour-coded picture, the DIP switch settings and the pins to avoid.
+**The diagrams** are [docs/wiring.html](docs/wiring.html) (XIAO C5) and
+[docs/wiring-c3.html](docs/wiring-c3.html) (XIAO C3) — open either in a browser
+for a colour-coded picture, the DIP switch settings and the pins to avoid.
 
 **[docs/capacitors.html](docs/capacitors.html) — fit the two decoupling capacitors.**
 The XIAO and the PN532 share one 3V3 rail, and the C5 peaks at 403 mA transmitting on
