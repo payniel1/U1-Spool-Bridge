@@ -234,6 +234,103 @@ bool TagReader::tryQidi(uint8_t *uid, uint8_t uidLen, SpoolData &out) {
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Card dump — the instrument for a tag format we cannot decode yet.
+//
+// A MIFARE Classic sector will not give up a byte without the right 48-bit key,
+// so "can we read this tag" is really "do we have its keys". This walks every
+// sector with every key we know and records exactly what authenticated, so an
+// unknown tag stops being a guess and becomes bytes on a screen.
+//
+// The order matters. Bambu derives one key per sector from the UID and this
+// firmware already computes those, so they go first — if another vendor used a
+// similar scheme it shows up immediately. Then whatever the user has pasted
+// into Settings, then the public defaults.
+// ---------------------------------------------------------------------------
+static const char *kCommonKeys[] = {
+    "FFFFFFFFFFFF",  // factory default
+    "A0A1A2A3A4A5",  // MAD key A
+    "D3F7D3F7D3F7",  // NDEF public key
+    "000000000000",
+    "B0B1B2B3B4B5", "4D3A99C351DD", "1A982C7E459A", "AABBCCDDEEFF",
+    "714C5C886E97", "587EE5F9350F", "A0478CC39091", "533CB6C723F6",
+    "8FD0A4F256E9",
+};
+
+bool TagReader::dumpCard(CardDump &out) {
+  if (!_ready || !_nfc) return false;
+
+  out = CardDump();
+
+  uint8_t uid[10] = {0}, uidLen = 0;
+  while (READER_UART.available()) READER_UART.read();
+  if (!_nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 200)) return false;
+  memcpy(out.uid, uid, uidLen);
+  out.uidLen = uidLen;
+
+  // A 4-byte UID is the Classic 1K shape; NTAG21x answers with 7 and has no
+  // sectors to walk.
+  out.classic = (uidLen == 4);
+  if (!out.classic) return true;
+
+  uint8_t derived[16][6];
+  bambu_derive_keys(uid, uidLen, derived);
+
+  for (uint8_t sector = 0; sector < 16; sector++) {
+    // Build this sector's candidate list: derived key for THIS sector first.
+    uint8_t cand[4 + MAX_EXTRA_KEYS + 16][6];
+    char    candHex[4 + MAX_EXTRA_KEYS + 16][13];
+    uint8_t n = 0;
+
+    memcpy(cand[n], derived[sector], 6);
+    snprintf(candHex[n], 13, "%02X%02X%02X%02X%02X%02X", derived[sector][0],
+             derived[sector][1], derived[sector][2], derived[sector][3],
+             derived[sector][4], derived[sector][5]);
+    n++;
+
+    for (int k = 0; k < MAX_EXTRA_KEYS && n < (uint8_t)(sizeof(cand) / 6); k++) {
+      uint8_t key[6];
+      if (!hexToKey(g_settings.extraKeys[k], key)) continue;
+      memcpy(cand[n], key, 6);
+      snprintf(candHex[n], 13, "%s", g_settings.extraKeys[k]);
+      n++;
+    }
+    for (unsigned k = 0; k < sizeof(kCommonKeys) / sizeof(kCommonKeys[0]) &&
+                        n < (uint8_t)(sizeof(cand) / 6); k++) {
+      uint8_t key[6];
+      if (!hexToKey(kCommonKeys[k], key)) continue;
+      memcpy(cand[n], key, 6);
+      snprintf(candHex[n], 13, "%s", kCommonKeys[k]);
+      n++;
+    }
+
+    const uint8_t first = sector * 4;
+    for (uint8_t i = 0; i < n && !out.ok[sector]; i++) {
+      for (uint8_t type = 0; type < 2 && !out.ok[sector]; type++) {
+        // A failed authenticate drops the card, so it has to be reselected
+        // before the next attempt or every later try fails for the wrong reason.
+        if (!reselect(uid, &uidLen)) { delay(2); continue; }
+        if (!_nfc->mifareclassic_AuthenticateBlock(uid, uidLen, first, type, cand[i]))
+          continue;
+
+        bool anyBlock = false;
+        for (uint8_t b = 0; b < 3; b++) {
+          if (_nfc->mifareclassic_ReadDataBlock(first + b, out.data[sector][b]))
+            anyBlock = true;
+        }
+        if (!anyBlock) continue;
+
+        out.ok[sector]      = true;
+        out.keyType[sector] = type ? 'B' : 'A';
+        snprintf(out.keyUsed[sector], 13, "%s", candHex[i]);
+        out.sectorsRead++;
+      }
+      delay(0);   // keep the watchdog and the web server happy
+    }
+  }
+  return true;
+}
+
 ScanResult TagReader::poll(SpoolData &out, String &note) {
   if (!_ready) return SCAN_NO_TAG;
 

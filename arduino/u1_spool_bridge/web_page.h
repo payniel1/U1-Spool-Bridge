@@ -278,6 +278,24 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
   </section>
 
   <section class="card">
+    <h2>Tag dump</h2>
+    <p class="hint" style="margin-top:0">For a tag this firmware cannot decode yet.
+      Put it on the reader and this walks all 16 sectors with every key it knows —
+      the Bambu-style keys derived from the UID, anything in <b>Extra MIFARE keys</b>,
+      and the public defaults — then shows exactly what opened and what came back.
+      A sector reading <code>no key worked</code> means the key is unknown, not that
+      the tag is empty.</p>
+    <div class="row" style="margin-top:12px">
+      <button id="dumpgo">Read the tag</button>
+      <button class="ghost" id="dumpcopy" hidden>Copy</button>
+    </div>
+    <pre id="dumpout" hidden style="margin-top:12px;max-height:340px;overflow:auto;
+         font:500 11.5px/1.5 ui-monospace,SFMono-Regular,monospace;
+         background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+         padding:12px;white-space:pre"></pre>
+  </section>
+
+  <section class="card">
     <h2>Reader diagnostics</h2>
     <p class="hint" id="diagnow" style="margin-top:0"></p>
     <p class="hint">If the reader keeps dropping out, this settles why. The board
@@ -1118,6 +1136,29 @@ $("s-locall").onclick=async()=>{
   $("s-locall").disabled=false;
 };
 
+// ---- tag dump ----
+$("dumpgo").onclick=()=>{
+  $("dumpgo").disabled=true;
+  $("dumpout").hidden=false;
+  $("dumpout").textContent="Reading all 16 sectors — this takes 20-40 s…";
+  $("dumpcopy").hidden=true;
+  fetch("/api/dump",{method:"POST"}).catch(()=>{
+    $("dumpout").textContent="Could not reach this box.";
+    $("dumpgo").disabled=false;
+  });
+};
+$("dumpcopy").onclick=async()=>{
+  const t=$("dumpout").textContent;
+  try{ await navigator.clipboard.writeText(t); $("dumpcopy").textContent="Copied"; }
+  catch(e){
+    // clipboard needs a secure context, and a box on plain http is not one
+    const r=document.createRange(); r.selectNodeContents($("dumpout"));
+    const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    $("dumpcopy").textContent="Selected — press copy";
+  }
+  setTimeout(()=>{$("dumpcopy").textContent="Copy";},2500);
+};
+
 // ---- fleet ----
 $("refleet").onclick=()=>{
   $("fleet").innerHTML='<p class="hint">Looking for other boxes...</p>';
@@ -1479,6 +1520,11 @@ function connect(){
         $("fwmsg").textContent="Failed: "+m.msg+" (the box is still running the old firmware)";
         log("OTA failed: "+m.msg,"bad");
       }
+    }else if(m.ev==="dump"){
+      $("dumpout").hidden=false;
+      $("dumpout").textContent=m.text||"";
+      $("dumpcopy").hidden=false;
+      $("dumpgo").disabled=false;
     }else if(m.ev==="fleetpush"){
       fwFleetEvent(m);
     }else if(m.ev==="fleet"){

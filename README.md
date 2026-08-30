@@ -682,6 +682,46 @@ occupancy alone — presence comes from `print_task_config`, which stock does ex
 
 ---
 
+## Tag dump — for a format we cannot decode yet
+
+Some tags this firmware will not decode. Snapmaker's own factory tags are the
+case in point: they are MIFARE Classic 1K, and every sector is behind a 48-bit
+key, so "can we read this tag" is really "do we have its keys". The RSA
+signature Snapmaker uses is a separate thing again — it stops you *forging* a
+tag the printer will accept, but it does not encrypt anything, so it is not
+what stands between you and the bytes.
+
+The **Tag dump** card turns that from a guess into evidence. Put the tag on the
+reader, press **Read the tag**, and the box walks all 16 sectors trying every
+key it knows:
+
+1. the Bambu-style key derived from the UID for that sector — this firmware
+   already computes those, and if another vendor used a similar scheme it shows
+   up immediately;
+2. anything you have pasted into **Extra MIFARE keys** in Settings;
+3. the public defaults (`FFFFFFFFFFFF`, the MAD key, the NDEF key, and others).
+
+What comes back is a standard dump: the key that opened each sector, then the
+three data blocks as hex with an ASCII gutter.
+
+```
+sector  1  key A0A1A2A3A4A5 (A)
+  04 504C4100 00000000 42617369 63000000  |PLA.....Basic...|
+  05 00D200F0 00460000 FFFFFFFF 00000000  |.....F..........|
+```
+
+A sector reading `no key worked` means the key is unknown, not that the tag is
+empty. If that is every sector, the next step is to get the keys — the
+[U1-RFID](https://github.com/DnG-Crafts/U1-RFID) Android app and MifareClassicTool
+are both ways in — and paste them into Extra MIFARE keys, which the dump then
+uses on the next run.
+
+It takes 20–40 s and the reader stops polling while it runs; it is a bench
+tool, not something to leave on. Block 3 of each sector is the key trailer and
+is deliberately not dumped.
+
+---
+
 ## Timing settings
 
 Everything in **Settings** that takes a duration, what it governs, and the range it will

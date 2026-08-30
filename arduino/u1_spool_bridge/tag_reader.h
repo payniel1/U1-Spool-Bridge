@@ -31,8 +31,28 @@ struct ReaderPins {
   int8_t rst = -1;   // RSTO. Not optional: the driver pulses it on every init.
 };
 
+// A full MIFARE Classic 1K read-out, for working out a tag format we do not yet
+// have a decoder for. 16 sectors of 4 blocks; block 3 of each is the trailer
+// (keys + access bits) and is deliberately not stored — it is the one block
+// whose contents are secrets rather than data.
+struct CardDump {
+  uint8_t uid[10] = {0};
+  uint8_t uidLen  = 0;
+  bool    classic = false;          // false = not a MIFARE Classic 1K
+  bool    ok[16]  = {false};        // did this sector authenticate at all
+  char    keyUsed[16][13] = {{0}};  // the key that worked, hex
+  char    keyType[16] = {0};        // 'A' or 'B'
+  uint8_t data[16][3][16] = {{{0}}};// blocks 0..2 of each sector
+  uint8_t sectorsRead = 0;
+};
+
 class TagReader {
  public:
+  // Try every key we know against every sector and record what comes back.
+  // Slow — hundreds of authenticate attempts, each needing the card reselected
+  // — so it runs from the main loop, never the web server task.
+  bool dumpCard(CardDump &out);
+
   bool       begin(uint8_t index, const ReaderPins &pins);
   uint8_t    index() const { return _index; }
   const char *busName() const;

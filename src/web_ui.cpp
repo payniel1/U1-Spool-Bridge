@@ -307,6 +307,15 @@ void webFleetPush(const String &peer, const char *state, const String &msg) {
   ws.textAll(out);
 }
 
+void webDumpResult(const String &text) {
+  JsonDocument doc;
+  doc["ev"]   = "dump";
+  doc["text"] = text;
+  String out;
+  serializeJson(doc, out);
+  ws.textAll(out);
+}
+
 void webLog(const String &msg, const char *level) {
   JsonDocument doc;
   doc["ev"]    = "log";
@@ -447,6 +456,12 @@ void webBegin() {
     }
     webBroadcastStatus();
     req->send(200, "application/json", "{\"ok\":true}");
+  });
+
+  // Read every sector of whatever is on the reader, with every key we know.
+  server.on("/api/dump", HTTP_POST, [](AsyncWebServerRequest *req) {
+    g_work.dump = true;
+    req->send(200, "application/json", "{\"ok\":true,\"queued\":true}");
   });
 
   server.on("/api/rescan", HTTP_POST, [](AsyncWebServerRequest *req) {

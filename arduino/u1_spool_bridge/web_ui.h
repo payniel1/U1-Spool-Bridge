@@ -38,6 +38,7 @@ struct PendingWork {
   bool      slots = false;    // re-read what the printer says is loaded    // browse the other boxes over mDNS
   bool      groupApply = false;  // push a setting out to the other boxes
   bool      smRefile = false;    // re-file our loaded spools under a new location
+  bool      dump = false;        // read out every sector of the tag on the reader
   bool      arm = false;      // arm a slot (TRIG_ARMED)
   uint8_t   armChannel = 0;
   uint32_t  smLinkId = 0;
@@ -72,6 +73,9 @@ GateConfig        gateCfg();
 // state: "start" | "progress" | "done" | "error"
 // Progress of a box-to-box firmware push, one line per peer.
 void webFleetPush(const String &peer, const char *state, const String &msg);
+
+// The result of a card dump, as pasteable text.
+void webDumpResult(const String &text);
 
 // Renaming a group writes the new name to every box in it. Done from the box
 // rather than the browser, for the same reason the firmware push is.

@@ -733,6 +733,69 @@ void loop() {
   if (g_work.fleet && lastFleetScan && millis() - lastFleetScan < 10000) {
     g_work.fleet = false;
   }
+  // Read the tag on the reader out sector by sector. Slow — hundreds of
+  // authenticate attempts — so it runs here, and the reader's normal polling is
+  // suspended for the duration by the same otaBusy() gate the updates use.
+  if (g_work.dump) {
+    g_work.dump = false;
+    static CardDump dump;                 // ~1 kB; not going on the stack
+    webLog("dump: reading every sector, this takes a moment...", "warn");
+
+    if (!g_readers[0].dumpCard(dump)) {
+      webDumpResult("No tag on the reader, or the reader is not answering.");
+    } else {
+      String t;
+      t.reserve(2600);
+      char line[96];
+
+      t += "u1-spool-bridge card dump  fw " FW_VERSION "\n";
+      t += "UID ";
+      for (uint8_t i = 0; i < dump.uidLen; i++) {
+        snprintf(line, sizeof(line), "%02X", dump.uid[i]);
+        t += line;
+      }
+      snprintf(line, sizeof(line), "  (%u bytes)\n", (unsigned)dump.uidLen);
+      t += line;
+
+      if (!dump.classic) {
+        t += "\nNot a MIFARE Classic 1K (a 7-byte UID is NTAG21x, which has no\n"
+             "sectors and is read by the OpenSpool path already).\n";
+      } else {
+        snprintf(line, sizeof(line), "%u of 16 sectors opened\n\n",
+                 (unsigned)dump.sectorsRead);
+        t += line;
+
+        for (uint8_t sc = 0; sc < 16; sc++) {
+          if (!dump.ok[sc]) {
+            snprintf(line, sizeof(line), "sector %2u  --  no key worked\n", (unsigned)sc);
+            t += line;
+            continue;
+          }
+          snprintf(line, sizeof(line), "sector %2u  key %s (%c)\n", (unsigned)sc,
+                   dump.keyUsed[sc], dump.keyType[sc]);
+          t += line;
+          for (uint8_t b = 0; b < 3; b++) {
+            snprintf(line, sizeof(line), "  %02u ", (unsigned)(sc * 4 + b));
+            t += line;
+            for (uint8_t i = 0; i < 16; i++) {
+              snprintf(line, sizeof(line), "%02X", dump.data[sc][b][i]);
+              t += line;
+              if (i % 4 == 3) t += ' ';
+            }
+            t += " |";
+            for (uint8_t i = 0; i < 16; i++) {
+              const uint8_t c = dump.data[sc][b][i];
+              t += (char)((c >= 32 && c < 127) ? c : '.');
+            }
+            t += "|\n";
+          }
+        }
+      }
+      webDumpResult(t);
+      webLog("dump: " + String(dump.sectorsRead) + "/16 sectors read", "ok");
+    }
+  }
+
   if (g_work.groupApply) {
     g_work.groupApply = false;
     fleetSetRun();
