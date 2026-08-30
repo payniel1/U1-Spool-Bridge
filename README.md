@@ -228,6 +228,45 @@ defaults every read rather than assuming a key is present.
 
 ---
 
+## Porting to another board
+
+Almost nothing here is board-specific. Exactly one line in the source keys off
+the board variant (`ARDUINO_XIAO_ESP32C5`, and only to set the status LED's
+polarity); everything else keys off the SoC. The 5 GHz controls appear from
+`SOC_WIFI_SUPPORT_5G`, and the C3 and C5 route UART through the GPIO matrix, so
+any free pin can be RX or TX.
+
+Built and verified on non-XIAO boards:
+
+| Board | Flash used | Static RAM |
+|---|---|---|
+| `esp32-c3-devkitm-1` | 73.3% | 47,840 |
+| `nologo_esp32c3_super_mini` | 72.3% | 47,052 |
+| `esp32-c5-devkitc1-n4` (4 MB) | 77.0% | 60,380 |
+
+Two things you must set per board:
+
+**Pins.** `-DPIN_PN532_RX/TX/RST`. Avoid the strapping pins — on the C3 those
+are GPIO2, GPIO8 and GPIO9 — and whatever carries the boot log.
+
+**The partition table**, which must match the board's real flash and must have
+two app slots. An 8 MB table on a 4 MB board *compiles perfectly* and then fails
+on the device, and a single-slot table like `huge_app.csv` silently removes OTA
+so the box can only ever be reflashed over USB. Nothing in the toolchain checks
+either, so `scripts/check_partitions.py` runs before every build and refuses
+both, with the sums in the error. If you genuinely want a single-slot build, set
+`custom_allow_single_ota = yes` in that environment.
+
+Rule of thumb: 8 MB board → `default_8MB.csv`, 4 MB board → `min_spiffs.csv`.
+
+Two smaller caveats. `ARDUINO_USB_MODE=1` and `ARDUINO_USB_CDC_ON_BOOT=1` are in
+the shared flags because every board here has native USB; on a board whose USB
+socket is a CH340 or CP2102 bridge, drop them and the console moves to UART0. And
+a board whose variant defines neither `LED_BUILTIN` nor `RGB_BUILTIN` loses the
+status light silently — the XIAO C3 is one such board.
+
+---
+
 ## Wi-Fi bands
 
 **On a C3 there is nothing to choose** — it is 2.4 GHz only and the band control
