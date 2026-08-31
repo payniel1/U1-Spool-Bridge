@@ -189,6 +189,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
     <span class="pill"><i class="dot" id="d-wf"></i><span id="t-wf">WiFi</span></span>
     <span class="pill" id="p-band" hidden><i class="dot" id="d-bd"></i><span id="t-bd">Band</span></span>
     <span class="pill"><i class="dot" id="d-pr"></i><span id="t-pr">Printer</span></span>
+    <span class="pill" id="p-be" hidden title=""><i class="dot" id="d-be"></i><span id="t-be"></span></span>
     <span class="pill" id="p-sm" hidden><i class="dot" id="d-sm"></i>Spoolman</span>
   </div>
 </header>
@@ -453,7 +454,26 @@ const refVersion=()=>myVersion||(fwSelf&&fwSelf.version)||"";
 // CARD_UID matches a tag this box has read gets marked, so across a fleet you can
 // see which drybox fed which slot.
 let slots=[], slotsKnown=false, slotsErr="";
-let backendName="", backendKnown=false, presenceOnly=false;
+let backendName="", backendKnown=false, backendConfirmed=false,
+    backendPinned=false, presenceOnly=false;
+
+// Three states worth telling apart, because they mean different things:
+//   pinned    — you chose it; detection is deliberately ignored
+//   confirmed — a send settled it, which is the only direct evidence there is
+//   inferred  — the 15s status probe recognised the shape, nothing more
+// Anything else is still the opening assumption and says so.
+function paintBackendPill(){
+  const pill=$("p-be"), t=$("t-be"); if(!pill||!t)return;
+  if(!backendName){pill.hidden=true;return;}
+  pill.hidden=false;
+  const how = backendPinned?"pinned"
+            : backendConfirmed?"confirmed by a send"
+            : backendKnown?"inferred from the printer's reply, not yet confirmed by a send"
+            : "assumed \u2014 nothing has confirmed it yet";
+  t.textContent=backendName+(backendPinned?" \u00B7 pinned":backendConfirmed?"":" ?");
+  pill.title=`Printer backend: ${backendName} (${how}).`;
+  setDot("d-be", backendPinned||backendConfirmed?"on":backendKnown?"idle":"off");
+}
 
 function paintBackendHint(){
   const el=$("s-backendhint"), sel=$("s-backend"); if(!el||!sel)return;
@@ -465,14 +485,20 @@ function paintBackendHint(){
      +"rather than working around it.";
   }else if(v===2){
     t="Leaves CARD_TYPE out: the Bespok3d handler validates the whole info "
-     +"object and rejects the entire request over one key it does not know. It "
-     +"also has no queryable filament_detect, so \u201cLoaded in the printer\u201d "
-     +"falls back to what the boxes themselves know.";
+     +"object and rejects the entire request over one key it does not know. "
+     +"\u201cLoaded in the printer\u201d still works \u2014 filament_detect is a stock "
+     +"object \u2014 but it reports no tag UID, so the THIS BOX badge cannot appear.";
   }else{
     t="Works it out from the printer, and if a send is refused for an unknown "
      +"field it drops the Extended-only ones and retries.";
   }
-  if(backendName)t+=` Currently: ${backendName}${backendKnown?"":" (assumed)"}.`;
+  if(backendName){
+    const how = backendPinned?"pinned here"
+              : backendConfirmed?"confirmed by a send"
+              : backendKnown?"inferred from the printer's reply, not yet confirmed by a send"
+              : "assumed \u2014 nothing has confirmed it";
+    t+=` Currently: ${backendName} (${how}).`;
+  }
   el.textContent=t;
 }
 const myUids=new Set();
@@ -552,10 +578,9 @@ function paintLoaded(){
    +`filament in it, so until you load it these are the only source.</p>`);
   if(presenceOnly){
     el.insertAdjacentHTML("beforeend",
-      `<p class="hint">This printer reports which slots are <b>occupied</b> but `
-     +`not what is in them \u2014 the Bespok3d plugin serves the setter without a `
-     +`queryable <code>filament_detect</code>. Everything above that names a `
-     +`filament came from a drybox, not from the printer.</p>`);
+      `<p class="hint">This printer reports which slots are <b>occupied</b> but not `
+     +`what is in them \u2014 it has no queryable <code>filament_detect</code>. `
+     +`Everything above that names a filament came from a drybox.</p>`);
   }else if(slotsErr){
     el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
   }
@@ -1531,7 +1556,8 @@ function connect(){
         +`Upload a firmware.bin to update over the air — nothing is committed `
         +`until the whole image verifies.`;
       if(m.backend){backendName=m.backend;backendKnown=!!m.backendKnown;
-        presenceOnly=!!m.presenceOnly;paintBackendHint();}
+        backendConfirmed=!!m.backendConfirmed;backendPinned=!!m.backendPinned;
+        presenceOnly=!!m.presenceOnly;paintBackendHint();paintBackendPill();}
       if(m.slots){slots=m.slots;slotsKnown=!!m.slotsKnown;slotsErr=m.slotsErr||"";paintLoaded();}
       $("diagnow").textContent=m.resets
         ? `This reader has had to reset its I2C bus ${m.resets} time(s) since boot.`

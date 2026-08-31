@@ -73,7 +73,8 @@ def main():
     emit = os.path.join(tmp, "emit")
     clas = os.path.join(tmp, "classify")
     build(emit, ["test/bespok3d/emit_payload.cpp", "src/u1_client.cpp", "src/settings.cpp",
-                 "src/spool_data.cpp", "src/send_gate.cpp", "src/u1_reply.cpp"], aj)
+                 "src/spool_data.cpp", "src/send_gate.cpp", "src/u1_reply.cpp",
+                 "src/u1_detect.cpp"], aj)
     build(clas, ["test/bespok3d/classify.cpp", "src/u1_reply.cpp"], aj)
 
     payloads = json.loads(subprocess.run([emit], capture_output=True, text=True).stdout)

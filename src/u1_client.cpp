@@ -6,12 +6,14 @@
 #include <string.h>
 
 #include "settings.h"
+#include "u1_detect.h"
 #include "u1_reply.h"
 
 // What the wire has actually told us. U1_BACKEND_AUTO means "nobody has said
 // yet"; u1BackendEffective() turns that into a working assumption.
-static uint8_t s_detected      = U1_BACKEND_AUTO;
-static bool    s_presenceOnly  = false;
+static uint8_t s_detected     = U1_BACKEND_AUTO;
+static bool    s_detectedHard = false;   // came from a send, not from a shape
+static bool    s_presenceOnly = false;
 
 uint8_t u1BackendEffective() {
   if (g_settings.printerBackend != U1_BACKEND_AUTO) return g_settings.printerBackend;
@@ -25,8 +27,12 @@ bool u1BackendKnown() {
 
 void u1BackendForget() {
   s_detected     = U1_BACKEND_AUTO;
+  s_detectedHard = false;
   s_presenceOnly = false;
 }
+
+// True once a SEND has told us, rather than the status shape merely suggesting.
+bool u1BackendConfirmed() { return s_detectedHard; }
 
 bool u1SlotsPresenceOnly() { return s_presenceOnly; }
 
@@ -38,10 +44,20 @@ const char *u1BackendName(uint8_t backend) {
   }
 }
 
-// Only latch from evidence, and only while the user has left it on AUTO — an
-// explicit choice should not be quietly overridden by a probe.
-static void backendObserved(uint8_t what) {
-  if (g_settings.printerBackend == U1_BACKEND_AUTO) s_detected = what;
+// Only latch while the user has left it on AUTO — an explicit choice should not
+// be quietly overridden by a probe.
+//
+// `hard` separates two very different kinds of evidence. A refused send is a
+// TEST of the behaviour that actually differs. The status-shape probe is an
+// inference, and it runs every 15 seconds. Without this, the probe walked over
+// the send's answer on the next poll — so a box that had correctly worked out
+// it was talking to Bespok3d flipped back to Extended a few seconds later, and
+// then paid two round trips on every send thereafter, for ever.
+static void backendObserved(uint8_t what, bool hard) {
+  if (g_settings.printerBackend != U1_BACKEND_AUTO) return;
+  if (s_detectedHard && !hard) return;
+  s_detected     = what;
+  s_detectedHard = s_detectedHard || hard;
 }
 
 static String baseUrl() {
@@ -103,21 +119,23 @@ bool u1FetchSlots(U1Slot slots[4], String &errorOut) {
     slots[i++].present = v.as<bool>();
   }
 
+  // Which backend, from the SHAPE of the struct rather than from whether the
+  // object exists — both firmwares have it. See u1_detect.h.
+  switch (u1ProbeBackend(body.c_str())) {
+    case U1_PROBE_EXTENDED: backendObserved(U1_BACKEND_EXTENDED, false); break;
+    case U1_PROBE_STOCK:    backendObserved(U1_BACKEND_STOCK,    false); break;
+    default: break;   // nothing to go on; leave whatever we had
+  }
+
   JsonArrayConst info = doc["result"]["status"]["filament_detect"]["info"];
   if (info.isNull()) {
-    // Presence still worked, so don't fail the whole call — the object simply
-    // is not there. That is the signature of the Bespok3d plugin on stock
-    // firmware: it serves the setter but registers no get_status, so this is
-    // also the cheapest reliable way to tell the two backends apart.
-    if (i > 0) {
-      backendObserved(U1_BACKEND_STOCK);
-      s_presenceOnly = true;
-    }
+    // Genuinely absent. Neither backend does this, but presence still worked,
+    // so report what we have rather than failing the whole call.
+    s_presenceOnly = (i > 0);
     errorOut = "filament_detect not queryable — slot presence only";
     return i > 0;
   }
 
-  backendObserved(U1_BACKEND_EXTENDED);
   s_presenceOnly = false;
 
   i = 0;
@@ -246,7 +264,7 @@ SendResult u1Send(const SpoolData &d, uint8_t channel) {
       // A backend that accepted an Extended-only field is an Extended backend.
       // Worth latching: it means the readback is worth attempting.
       if (backend == U1_BACKEND_EXTENDED && g_settings.sendCardUid && d.uidLen > 0) {
-        backendObserved(U1_BACKEND_EXTENDED);
+        backendObserved(U1_BACKEND_EXTENDED, true);
       }
       r.ok = true;
       return r;
@@ -262,7 +280,7 @@ SendResult u1Send(const SpoolData &d, uint8_t channel) {
                   "\" — set it to Auto, or to stock + Bespok3d.";
         return r;
       }
-      backendObserved(U1_BACKEND_STOCK);
+      backendObserved(U1_BACKEND_STOCK, true);
       backend = U1_BACKEND_STOCK;
       continue;                       // one retry, without the extra fields
     }

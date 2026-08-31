@@ -45,7 +45,7 @@ Two separate projects add that endpoint, and this firmware works with either.
 | Flashing | Yes | **No — runs on stock firmware** |
 | How the endpoint appears | Patches `filament_detect` to expose a writable `set` | `webhooks.register_endpoint("filament_detect/set", …)` |
 | `CARD_TYPE` | Accepted | **Rejected — and it fails the whole request** |
-| Reading the printer back | Yes, `filament_detect` is queryable | No `get_status`, so slot *presence* only |
+| Reading the printer back | Yes, with the tag UID | Yes, but no tag UID — so no **THIS BOX** badge |
 
 Set **Printer backend** in Settings, or leave it on **Auto**, which is the
 default: the box works it out from whether `filament_detect` answers a query,
@@ -269,13 +269,13 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
-Two binaries ship, one per chip. Measured on the images in the **v1.16.1**
+Two binaries ship, one per chip. Measured on the images in the **v1.16.2**
 release:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,580,368 | 3,342,336 &nbsp;(`default_8MB`) | 47.3% | 45.1% | 60,492 |
-| `firmware-c3.bin` | 1,501,344 | 1,966,080 &nbsp;(`min_spiffs`) | 76.4% | 72.6% | 47,060 |
+| `firmware-c5.bin` | 1,585,888 | 3,342,336 &nbsp;(`default_8MB`) | 47.4% | 45.2% | 60,492 |
+| `firmware-c3.bin` | 1,506,880 | 1,966,080 &nbsp;(`min_spiffs`) | 76.6% | 72.8% | 47,060 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -867,11 +867,29 @@ addition, is dropped. Note that the refusal arrives as **HTTP 200** — which is
 `u1_reply.cpp` classifies the body rather than trusting the status code, and why a
 substring check for `"result"` would have reported every rejected send as delivered.
 
-**The readback goes dark.** No `get_status` means no `filament_detect` in
-`/printer/objects/query`, so **Loaded in the printer** shows occupancy from
-`print_task_config` and fills the rest from the dryboxes, marked **IN THE BOX**. Nothing
-is lost that the boxes did not already know — you just stop getting the printer's
-independent confirmation.
+**The readback still works, minus the tag UID.** `filament_detect` is a *stock*
+Klipper object — it is what the printer's own spool-holder readers write to and what the
+screen shows — so both backends answer a query for it. What stock does not have is
+paxx12's `CARD_TYPE` and `CARD_EVENT_TIME`, and it reports `CARD_UID` as the integer `0`
+rather than a byte array. So **Loaded in the printer** reads back normally, but no slot
+can be matched to the box that filled it and the **THIS BOX** badge never appears.
+
+That difference is also the detector. Comparing the two machines:
+
+```
+stock + Bespok3d   ... "OFFICIAL": true, "CARD_UID": 0
+paxx12             ... "OFFICIAL": true, "CARD_UID": [4,195,67,...],
+                       "CARD_TYPE": "NTAG21x", "CARD_EVENT_TIME": 152840.04
+```
+
+and it is structural rather than data-dependent — on the stock machine every slot lacks
+those keys, empty ones included. Captures from both printers are in
+[`test/fixtures/`](test/fixtures/) and are replayed by the host tests.
+
+**An earlier version of this got it wrong**, in the confident direction: it asked "is
+`filament_detect` queryable?" on the theory that only the Extended Firmware exposed it,
+and so reported *Extended Firmware* on a stock machine. Both firmwares expose it. The
+struct-shape test above replaced that, and a refused send now outranks it — see below.
 
 **Verified against the plugin, not just against the docs.**
 [`test/bespok3d/check.py`](test/bespok3d/check.py) compiles the shipped
@@ -882,10 +900,12 @@ desktop 0.7.6-beta, daemon 0.14.0): the stock payload is accepted, the Extended
 one is refused naming exactly `CARD_TYPE`, and the box reads that refusal as
 the signal to strip and retry.
 
-**Detection.** On **Auto** the box decides from whether `filament_detect` comes back in
-the 15-second slot query, and independently self-corrects: a send refused for an unknown
-field latches the stock backend, drops the extra fields and retries once, so a box pointed
-at the wrong kind of printer fixes itself on its first scan instead of failing every one.
+**Detection, and which evidence wins.** Two things decide it, and they are not equal.
+The 15-second slot query *infers* from the struct shape above. A send refused with
+`unsupported fields` *tests* the thing that actually differs, so it outranks the probe and
+the probe may not overwrite it — without that rule the poll walked over the send's answer
+a few seconds later, and every send after that paid two round trips for ever. The header
+pill says which you are looking at: a `?` means inferred but not yet confirmed by a send.
 Pinning the setting turns that off — a pinned Extended backend that gets refused reports
 the refusal and names the setting, rather than quietly working around a deliberate choice.
 Changing the printer host clears the latch.
@@ -1061,6 +1081,7 @@ include/
   tag_reader.h    PN532 front end
   u1_client.h     Moonraker client, and which backend is serving it
   u1_reply.h      reading the printer's answer (hardware-free, unit-tested)
+  u1_detect.h     telling the two printer backends apart (hardware-free, unit-tested)
   ota_stall.h     when a dead upload has to be abandoned (hardware-free, unit-tested)
   spoolman.h      Spoolman client
   spoolman_fields.h  card_uids / JSON encoding (hardware-free, unit-tested)
@@ -1077,8 +1098,9 @@ src/
   dec_openspool.cpp  NDEF TLV walk + OpenSpool JSON
   dec_bambu.cpp      key derivation + block map
   dec_qidi.cpp       material/colour code tables
-test/test_decoders/  62 host-side tests
+test/test_decoders/  67 host-side tests
 test/bespok3d/       our payload run through the Bespok3d plugin's own rules
+test/fixtures/       real filament_detect captures from both kinds of printer
 arduino/u1_spool_bridge/   include/ + src/ flattened into an Arduino IDE sketch
 docs/               flashing guides, wiring and capacitor pages
 licenses/           GPL-3.0, LGPL-3.0 and LGPL-2.1 texts, for binary releases

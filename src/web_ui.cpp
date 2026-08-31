@@ -192,7 +192,9 @@ void webBroadcastStatus() {
   // Which side is answering /printer/filament_detect/set, and whether anything
   // has actually told us or we are still running on the assumption.
   doc["backend"]      = u1BackendName(u1BackendEffective());
-  doc["backendKnown"] = u1BackendKnown();
+  doc["backendKnown"]     = u1BackendKnown();
+  doc["backendConfirmed"] = u1BackendConfirmed();
+  doc["backendPinned"]    = g_settings.printerBackend != U1_BACKEND_AUTO;
   doc["presenceOnly"] = u1SlotsPresenceOnly();
   JsonArray sl = doc["slots"].to<JsonArray>();
   for (int i = 0; i < 4; i++) {

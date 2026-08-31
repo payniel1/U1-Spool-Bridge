@@ -46,6 +46,11 @@ const char *u1BackendName(uint8_t backend);
 // True once something has actually told us, rather than us assuming.
 bool u1BackendKnown();
 
+// True once a SEND settled it. The 15-second status probe only infers from the
+// shape of filament_detect; a refused send tests the thing that differs, so the
+// UI distinguishes them and the probe is not allowed to overwrite one.
+bool u1BackendConfirmed();
+
 // Drop the latch — call when the printer host or the backend setting changes,
 // so a box moved to a different printer does not carry an old answer over.
 void u1BackendForget();

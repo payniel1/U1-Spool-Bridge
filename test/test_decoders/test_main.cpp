@@ -12,6 +12,7 @@
 #include "spool_data.h"
 #include "spoolman_fields.h"
 #include "ota_stall.h"
+#include "u1_detect.h"
 #include "u1_reply.h"
 
 // ---------------------------------------------------------------------------
@@ -858,6 +859,60 @@ void test_stall_zero_timeout_is_immediate() {
   TEST_ASSERT_TRUE(otaStalled(true, 5, 5, 0));
 }
 
+
+// ---------------------------------------------------------------------------
+// Telling the two printer backends apart.
+//
+// Both fixtures are real captures from Daniel's two U1s, saved under
+// test/fixtures/. The first version of this detector asked "is filament_detect
+// queryable?" and got it confidently wrong: that object is stock, both
+// machines answer, and a stock printer was reported as Extended Firmware. The
+// difference that actually holds is two extra keys in the struct.
+// ---------------------------------------------------------------------------
+
+static const char kStockStatus[] =
+    "{\"result\":{\"eventtime\":1931.462101879,\"status\":{\"filament_detect\":{\"info\":[{\"VERSION\":0,\"VENDOR\":\"Generic\",\"MANUFACTURER\":\"NONE\",\"MAIN_TYPE\":\"ASA\",\"SUB_TYPE\":\"Basic\",\"TRAY\":0,\"ALPHA\":255,\"MULTI_MODE\":0,\"COLOR_NUMS\":5,\"ARGB_COLOR\":4283407871,\"RGB_1\":5217791,\"RGB_2\":0,\"RGB_3\":0,\"RGB_4\":0,\"RGB_5\":0,\"DIAMETER\":0,\"WEIGHT\":0,\"LENGTH\":0,\"DRYING_TEMP\":0,\"DRYING_TIME\":0,\"HOTEND_MAX_TEMP\":280,\"HOTEND_MIN_TEMP\":240,\"BED_TYPE\":0,\"BED_TEMP\":95,\"FIRST_LAYER_TEMP\":0,\"OTHER_LAYER_TEMP\":0,\"SKU\":0,\"MF_DATE\":\"19700101\",\"RSA_KEY_VERSION\":0,\"OFFICIAL\":true,\"CARD_UID\":0},{\"VERSION\":0,\"VENDOR\":\"NONE\",\"MANUFACTURER\":\"NONE\",\"MAIN_TYPE\":\"NONE\",\"SUB_TYPE\":\"NONE\",\"TRAY\":0,\"ALPHA\":255,\"MULTI_MODE\":0,\"COLOR_NUMS\":1,\"ARGB_COLOR\":4294967295,\"RGB_1\":16777215,\"RGB_2\":16777215,\"RGB_3\":16777215,\"RGB_4\":16777215,\"RGB_5\":16777215,\"DIAMETER\":0,\"WEIGHT\":0,\"LENGTH\":0,\"DRYING_TEMP\":0,\"DRYING_TIME\":0,\"HOTEND_MAX_TEMP\":0,\"HOTEND_MIN_TEMP\":0,\"BED_TYPE\":0,\"BED_TEMP\":0,\"FIRST_LAYER_TEMP\":0,\"OTHER_LAYER_TEMP\":0,\"SKU\":0,\"MF_DATE\":\"19700101\",\"RSA_KEY_VERSION\":0,\"OFFICIAL\":false,\"CARD_UID\":0}],\"state\":[0,0,0,0],\"config\":{\"startup_stay\":false}},\"print_task_config\":{\"filament_vendor\":[\"Polymaker\",\"Anycubic\",\"fusion\",\"SUNLU\"],\"filament_official\":[true,true,true,true],\"filament_exist\":[true,true,true,true],\"filament_spool_id\":[4,21,14,22]}}}}";
+
+static const char kPaxxStatus[] =
+    "{\"result\":{\"eventtime\":181539.099150397,\"status\":{\"filament_detect\":{\"info\":[{\"VERSION\":0,\"VENDOR\":\"SUNLU\",\"MANUFACTURER\":\"NONE\",\"MAIN_TYPE\":\"PLA\",\"SUB_TYPE\":\"Basic\",\"TRAY\":0,\"ALPHA\":255,\"MULTI_MODE\":0,\"COLOR_NUMS\":5,\"ARGB_COLOR\":4278190080,\"RGB_1\":0,\"RGB_2\":0,\"RGB_3\":0,\"RGB_4\":0,\"RGB_5\":0,\"DIAMETER\":0,\"WEIGHT\":0,\"LENGTH\":0,\"DRYING_TEMP\":0,\"DRYING_TIME\":0,\"HOTEND_MAX_TEMP\":200,\"HOTEND_MIN_TEMP\":180,\"BED_TYPE\":0,\"BED_TEMP\":40,\"FIRST_LAYER_TEMP\":0,\"OTHER_LAYER_TEMP\":0,\"SKU\":0,\"MF_DATE\":\"19700101\",\"RSA_KEY_VERSION\":0,\"OFFICIAL\":true,\"CARD_UID\":[4,195,67,228,58,2,137],\"CARD_TYPE\":\"NTAG21x\",\"CARD_EVENT_TIME\":152840.043328796},{\"VERSION\":0,\"VENDOR\":\"eSUN\",\"MANUFACTURER\":\"NONE\",\"MAIN_TYPE\":\"PLA\",\"SUB_TYPE\":\"Basic\",\"TRAY\":0,\"ALPHA\":255,\"MULTI_MODE\":0,\"COLOR_NUMS\":5,\"ARGB_COLOR\":4282822900,\"RGB_1\":4632820,\"RGB_2\":0,\"RGB_3\":0,\"RGB_4\":0,\"RGB_5\":0,\"DIAMETER\":0,\"WEIGHT\":0,\"LENGTH\":0,\"DRYING_TEMP\":0,\"DRYING_TIME\":0,\"HOTEND_MAX_TEMP\":200,\"HOTEND_MIN_TEMP\":180,\"BED_TYPE\":0,\"BED_TEMP\":40,\"FIRST_LAYER_TEMP\":0,\"OTHER_LAYER_TEMP\":0,\"SKU\":0,\"MF_DATE\":\"19700101\",\"RSA_KEY_VERSION\":0,\"OFFICIAL\":true,\"CARD_UID\":[4,115,192,245,64,2,137],\"CARD_TYPE\":\"NTAG21x\",\"CARD_EVENT_TIME\":163331.717079965}],\"state\":[0,0,0,0],\"config\":{\"startup_stay\":false}},\"print_task_config\":{\"filament_vendor\":[\"SUNLU\",\"eSUN\",\"Inslogic\",\"Jayo\"],\"filament_official\":[true,true,true,true],\"filament_exist\":[true,true,true,true],\"filament_spool_id\":[7,25,24,13]}}}}";
+
+void test_probe_reads_stock_bespok3d() {
+  TEST_ASSERT_EQUAL(U1_PROBE_STOCK, u1ProbeBackend(kStockStatus));
+}
+
+void test_probe_reads_paxx12_extended() {
+  TEST_ASSERT_EQUAL(U1_PROBE_EXTENDED, u1ProbeBackend(kPaxxStatus));
+}
+
+void test_probe_needs_something_to_look_at() {
+  TEST_ASSERT_EQUAL(U1_PROBE_UNKNOWN, u1ProbeBackend(NULL));
+  TEST_ASSERT_EQUAL(U1_PROBE_UNKNOWN, u1ProbeBackend(""));
+  TEST_ASSERT_EQUAL(U1_PROBE_UNKNOWN, u1ProbeBackend("<html>404</html>"));
+  // filament_detect present but with no slots is not evidence of either.
+  TEST_ASSERT_EQUAL(U1_PROBE_UNKNOWN, u1ProbeBackend(
+      "{\"result\":{\"status\":{\"filament_detect\":{\"info\":[]}}}}"));
+  // ...nor is the object being missing altogether.
+  TEST_ASSERT_EQUAL(U1_PROBE_UNKNOWN, u1ProbeBackend(
+      "{\"result\":{\"status\":{\"print_task_config\":{\"filament_exist\":[true]}}}}"));
+}
+
+void test_probe_either_paxx_key_is_enough() {
+  // CARD_EVENT_TIME alone, in case a build ever drops CARD_TYPE.
+  TEST_ASSERT_EQUAL(U1_PROBE_EXTENDED, u1ProbeBackend(
+      "{\"result\":{\"status\":{\"filament_detect\":{\"info\":"
+      "[{\"VENDOR\":\"x\",\"CARD_EVENT_TIME\":1.5}]}}}}"));
+  TEST_ASSERT_EQUAL(U1_PROBE_EXTENDED, u1ProbeBackend(
+      "{\"result\":{\"status\":{\"filament_detect\":{\"info\":"
+      "[{\"VENDOR\":\"x\",\"CARD_TYPE\":\"NTAG21x\"}]}}}}"));
+}
+
+void test_probe_scans_every_slot_not_just_the_first() {
+  // A printer whose first slot is empty must not read as stock.
+  TEST_ASSERT_EQUAL(U1_PROBE_EXTENDED, u1ProbeBackend(
+      "{\"result\":{\"status\":{\"filament_detect\":{\"info\":"
+      "[{\"VENDOR\":\"NONE\"},{\"VENDOR\":\"x\",\"CARD_TYPE\":\"NTAG21x\"}]}}}}"));
+}
+
 int main(int, char **) {
   UNITY_BEGIN();
   RUN_TEST(test_sha256_vector);
@@ -922,5 +977,10 @@ int main(int, char **) {
   RUN_TEST(test_stall_fires_at_the_boundary);
   RUN_TEST(test_stall_survives_millis_wraparound);
   RUN_TEST(test_stall_zero_timeout_is_immediate);
+  RUN_TEST(test_probe_reads_stock_bespok3d);
+  RUN_TEST(test_probe_reads_paxx12_extended);
+  RUN_TEST(test_probe_needs_something_to_look_at);
+  RUN_TEST(test_probe_either_paxx_key_is_enough);
+  RUN_TEST(test_probe_scans_every_slot_not_just_the_first);
   return UNITY_END();
 }
