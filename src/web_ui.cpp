@@ -316,13 +316,33 @@ void webFleetPush(const String &peer, const char *state, const String &msg) {
   ws.textAll(out);
 }
 
+// The last dump this box produced. A dump can run for minutes, and the
+// websocket does not always survive that — it used to mean the result was
+// gone and the whole slow read had to be repeated, which is exactly the
+// wrong thing to lose. Kept in RAM (a few kB) until the next dump or reboot.
+static String s_lastDump;
+
 void webDumpResult(const String &text) {
+  s_lastDump = text;
   JsonDocument doc;
   doc["ev"]   = "dump";
   doc["text"] = text;
   String out;
   serializeJson(doc, out);
   ws.textAll(out);
+}
+
+// Progress, so the connection has something to carry while the read grinds
+// on and the page can show where it is up to.
+void webDumpProgress(uint8_t done, uint8_t total) {
+  JsonDocument doc;
+  doc["ev"]    = "dumpprog";
+  doc["done"]  = done;
+  doc["total"] = total;
+  String out;
+  serializeJson(doc, out);
+  ws.textAll(out);
+  ws.cleanupClients();   // the only thing keeping the socket tidy in here
 }
 
 void webLog(const String &msg, const char *level) {
@@ -468,6 +488,16 @@ void webBegin() {
   });
 
   // Read every sector of whatever is on the reader, with every key we know.
+  // Collect the last dump, whether or not the socket survived producing it.
+  server.on("/api/dump", HTTP_GET, [](AsyncWebServerRequest *req) {
+    AsyncWebServerResponse *res = req->beginResponse(
+        200, "text/plain; charset=utf-8",
+        s_lastDump.length() ? s_lastDump
+                            : String("No dump has been taken since this box booted.\n"));
+    res->addHeader("Access-Control-Allow-Origin", "*");
+    req->send(res);
+  });
+
   server.on("/api/dump", HTTP_POST, [](AsyncWebServerRequest *req) {
     g_work.dump = true;
     req->send(200, "application/json", "{\"ok\":true,\"queued\":true}");

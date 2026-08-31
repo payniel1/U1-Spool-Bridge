@@ -51,7 +51,12 @@ class TagReader {
   // Try every key we know against every sector and record what comes back.
   // Slow — hundreds of authenticate attempts, each needing the card reselected
   // — so it runs from the main loop, never the web server task.
-  bool dumpCard(CardDump &out);
+  // Called after each sector so the caller can keep the network alive and
+  // show progress. The dump takes minutes on a tag whose keys we do not
+  // have, and two minutes of silence is long enough for a browser to give
+  // up on the websocket — which is how a finished dump used to be lost.
+  typedef void (*DumpProgress)(uint8_t doneSectors, uint8_t totalSectors);
+  bool dumpCard(CardDump &out, DumpProgress onSector = nullptr);
 
   bool       begin(uint8_t index, const ReaderPins &pins);
   uint8_t    index() const { return _index; }

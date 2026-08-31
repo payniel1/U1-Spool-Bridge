@@ -290,14 +290,14 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `native` | Decoder tests on the host, no hardware |
 
 Two binaries ship for the XIAOs, and a second archive covers the SuperMini and
-the C5 devkit. Measured on the **v1.17.1** images:
+the C5 devkit. Measured on the **v1.17.2** images:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,587,120 | 3,342,336 &nbsp;(`default_8MB`) | 47.5% | 45.2% | 60,492 |
-| `firmware-c3.bin` | 1,508,112 | 1,966,080 &nbsp;(`min_spiffs`) | 76.7% | 72.9% | 47,060 |
-| `firmware-c3-supermini.bin` | 1,508,208 | 1,966,080 | 76.7% | 72.9% | 47,060 |
-| `firmware-c5-devkit-n4.bin` | 1,601,696 | 1,966,080 | 81.5% | 77.6% | 60,388 |
+| `firmware-c5.bin` | 1,589,200 | 3,342,336 &nbsp;(`default_8MB`) | 47.6% | 45.3% | 60,508 |
+| `firmware-c3.bin` | 1,510,192 | 1,966,080 &nbsp;(`min_spiffs`) | 76.8% | 73.0% | 47,076 |
+| `firmware-c3-supermini.bin` | 1,510,288 | 1,966,080 | 76.8% | 73.0% | 47,076 |
+| `firmware-c5-devkit-n4.bin` | 1,603,776 | 1,966,080 | 81.6% | 77.7% | 60,404 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which

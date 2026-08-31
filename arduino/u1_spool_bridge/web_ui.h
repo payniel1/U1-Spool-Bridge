@@ -74,8 +74,12 @@ GateConfig        gateCfg();
 // Progress of a box-to-box firmware push, one line per peer.
 void webFleetPush(const String &peer, const char *state, const String &msg);
 
-// The result of a card dump, as pasteable text.
+// The result of a card dump, as pasteable text. Also retained on the box and
+// served from GET /api/dump, so a browser that dropped during the read (it
+// takes minutes on an unknown tag) can still collect it afterwards.
+// Sent to whoever is listening AND kept.
 void webDumpResult(const String &text);
+void webDumpProgress(uint8_t done, uint8_t total);
 
 // Renaming a group writes the new name to every box in it. Done from the box
 // rather than the browser, for the same reason the firmware push is.

@@ -746,7 +746,7 @@ void loop() {
     static CardDump dump;                 // ~1 kB; not going on the stack
     webLog("dump: reading every sector, this takes a moment...", "warn");
 
-    if (!g_readers[0].dumpCard(dump)) {
+    if (!g_readers[0].dumpCard(dump, webDumpProgress)) {
       webDumpResult("No tag on the reader, or the reader is not answering.");
     } else {
       String t;

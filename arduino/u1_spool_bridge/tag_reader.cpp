@@ -257,7 +257,7 @@ static const char *kCommonKeys[] = {
     "8FD0A4F256E9",
 };
 
-bool TagReader::dumpCard(CardDump &out) {
+bool TagReader::dumpCard(CardDump &out, DumpProgress onSector) {
   if (!_ready || !_nfc) return false;
 
   out = CardDump();
@@ -327,6 +327,7 @@ bool TagReader::dumpCard(CardDump &out) {
       }
       delay(0);   // keep the watchdog and the web server happy
     }
+    if (onSector) onSector(sector + 1, 16);
   }
   return true;
 }

@@ -288,6 +288,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
       the tag is empty.</p>
     <div class="row" style="margin-top:12px">
       <button id="dumpgo">Read the tag</button>
+      <button class="ghost" id="dumpfetch">Get the last dump</button>
       <button class="ghost" id="dumpcopy" hidden>Copy</button>
     </div>
     <pre id="dumpout" hidden style="margin-top:12px;max-height:340px;overflow:auto;
@@ -1221,13 +1222,34 @@ $("s-locall").onclick=async()=>{
 $("dumpgo").onclick=()=>{
   $("dumpgo").disabled=true;
   $("dumpout").hidden=false;
-  $("dumpout").textContent="Reading all 16 sectors — this takes 20-40 s…";
+  $("dumpout").textContent="Reading all 16 sectors\u2026";
   $("dumpcopy").hidden=true;
   fetch("/api/dump",{method:"POST"}).catch(()=>{
     $("dumpout").textContent="Could not reach this box.";
     $("dumpgo").disabled=false;
   });
 };
+// A dump can outlast the websocket. The box keeps the last one, so ask for it
+// whenever this card is showing and we have nothing — that turns a dropped
+// connection from "do the whole slow read again" into a refresh.
+async function dumpFetchLast(){
+  try{
+    const t=await (await fetch("/api/dump",{cache:"no-store"})).text();
+    if(t&&!/^No dump has been taken/.test(t)){
+      $("dumpout").hidden=false; $("dumpout").textContent=t;
+      $("dumpcopy").hidden=false; $("dumpgo").disabled=false;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+$("dumpfetch").onclick=async()=>{
+  if(!await dumpFetchLast()){
+    $("dumpout").hidden=false;
+    $("dumpout").textContent="This box has taken no dump since it booted.";
+  }
+};
+
 $("dumpcopy").onclick=async()=>{
   const t=$("dumpout").textContent;
   try{ await navigator.clipboard.writeText(t); $("dumpcopy").textContent="Copied"; }
@@ -1608,6 +1630,13 @@ function connect(){
         $("fwmsg").textContent="Failed: "+m.msg+" (the box is still running the old firmware)";
         log("OTA failed: "+m.msg,"bad");
       }
+    }else if(m.ev==="dumpprog"){
+      // Something to look at while a slow read grinds on, and proof the box is
+      // still working rather than wedged.
+      if(!$("dumpout").hidden)
+        $("dumpout").textContent=`Reading sector ${m.done} of ${m.total}\u2026 `
+          +`(an unknown tag takes a few minutes \u2014 the result is kept on the `
+          +`box, so it survives a dropped connection)`;
     }else if(m.ev==="dump"){
       $("dumpout").hidden=false;
       $("dumpout").textContent=m.text||"";
