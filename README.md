@@ -198,6 +198,7 @@ pio test -e native                           # decoder tests on your PC, no hard
 
 python3 scripts/check_partitions.py --selftest   # partition guard, no toolchain
 python3 scripts/test_check_partitions.py         # ...and its PlatformIO glue
+python3 test/bespok3d/check.py                   # our payload vs the Bespok3d plugin
 ```
 
 **The two images are not interchangeable**, and the fleet updater enforces
@@ -872,6 +873,15 @@ substring check for `"result"` would have reported every rejected send as delive
 is lost that the boxes did not already know — you just stop getting the printer's
 independent confirmation.
 
+**Verified against the plugin, not just against the docs.**
+[`test/bespok3d/check.py`](test/bespok3d/check.py) compiles the shipped
+`u1BuildPayload()` and `u1ClassifyReply()` on the host and runs a real payload
+through a transcription of the plugin's own validator, then feeds the answer
+back through the classifier. Confirmed against **rfid-ntag 0.1.14** (Bespok3d
+desktop 0.7.6-beta, daemon 0.14.0): the stock payload is accepted, the Extended
+one is refused naming exactly `CARD_TYPE`, and the box reads that refusal as
+the signal to strip and retry.
+
 **Detection.** On **Auto** the box decides from whether `filament_detect` comes back in
 the 15-second slot query, and independently self-corrects: a send refused for an unknown
 field latches the stock backend, drops the extra fields and retries once, so a box pointed
@@ -1068,6 +1078,7 @@ src/
   dec_bambu.cpp      key derivation + block map
   dec_qidi.cpp       material/colour code tables
 test/test_decoders/  62 host-side tests
+test/bespok3d/       our payload run through the Bespok3d plugin's own rules
 arduino/u1_spool_bridge/   include/ + src/ flattened into an Arduino IDE sketch
 docs/               flashing guides, wiring and capacitor pages
 licenses/           GPL-3.0, LGPL-3.0 and LGPL-2.1 texts, for binary releases
