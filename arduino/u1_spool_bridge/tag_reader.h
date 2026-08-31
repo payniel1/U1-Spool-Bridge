@@ -19,7 +19,7 @@ enum ScanResult : uint8_t {
   SCAN_NEW_TAG,      // decoded successfully — `out` is populated
   SCAN_UNREADABLE,   // tag present but we could not decode it — `out` has the UID
   SCAN_REMOVED,      // the tag really has gone (not just a momentary dropout)
-  SCAN_BUS_ERROR     // the reader stopped answering — the bus needs resetting
+  SCAN_READER_ERROR  // the module stopped answering; it needs a reset pulse
 };
 
 // HSU only. The I2C and SPI paths are gone: I2C is what the
@@ -64,7 +64,7 @@ class TagReader {
   // needs its reset line pulled.
   bool       recover();
   // Ask the reader something only a live one can answer. Cheap, and safe to
-  // call whenever the bus is otherwise quiet.
+  // call whenever the reader is otherwise quiet.
   bool       alive();
   uint16_t   recoveries() const { return _recoveries; }
   uint32_t   lastRecoveryAt() const { return _lastRecoveryAt; }

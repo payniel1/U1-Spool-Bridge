@@ -1,8 +1,10 @@
 #include "ota.h"
 
 #include <ArduinoOTA.h>
+#include <Update.h>
 
 #include "config.h"
+#include "ota_stall.h"
 #include "settings.h"
 #include "web_ui.h"
 
@@ -15,12 +17,19 @@ extern "C" const char kFwFingerprint[] __attribute__((used)) = FW_FINGERPRINT;
 
 const char *fwFingerprint() { return kFwFingerprint; }
 
-static bool s_busy = false;
-static int  s_pct = -1;
+static bool     s_busy = false;
+static int      s_pct = -1;
+static uint32_t s_lastActivity = 0;
 
 bool otaBusy() { return s_busy; }
 int  otaProgressPct() { return s_pct; }
-void otaSetBusy(bool busy) { s_busy = busy; if (!busy) s_pct = -1; }
+void otaNoteActivity() { s_lastActivity = millis(); }
+
+void otaSetBusy(bool busy) {
+  s_busy = busy;
+  if (busy) s_lastActivity = millis();   // start the clock, don't inherit it
+  else      s_pct = -1;
+}
 void otaSetProgress(int pct) { s_pct = pct; }
 
 void otaBegin() {
@@ -35,7 +44,7 @@ void otaBegin() {
   ArduinoOTA.onStart([]() {
     s_busy = true;
     s_pct  = 0;
-    // Nothing else should be touching the I2C bus or the network while an
+    // Nothing else should be touching the reader or the network while an
     // image is being written.
     webOtaEvent("start", 0, ArduinoOTA.getCommand() == U_FLASH ? "firmware" : "filesystem");
   });
@@ -74,6 +83,26 @@ void otaBegin() {
 }
 
 void otaLoop() {
+  // Ahead of the otaEnabled check on purpose: a box wedged by a dead upload
+  // has to be able to free itself even if OTA was switched off in the
+  // meantime, or the setting becomes a way to make the box permanently deaf.
+  if (otaStalled(s_busy, millis(), s_lastActivity, OTA_STALL_MS)) {
+    // Only the browser/fleet upload path can get stuck like this. ArduinoOTA
+    // has its own timeout and clears s_busy through onError, so by the time we
+    // are here there is no espota transfer to interrupt.
+    Update.abort();
+    otaSetBusy(false);
+    webOtaEvent("error", -1,
+                "upload stopped part-way — abandoned it, the box is back to normal");
+    Serial.println("OTA: upload stalled, aborted; box is live again");
+  }
+
   if (!g_settings.otaEnabled) return;
+
+  // Note that espota needs no keep-alive here: ArduinoOTA::handle() blocks
+  // inside _runUpdate() for the whole transfer, so otaLoop() does not run
+  // again until it is over. Refreshing s_lastActivity around this call would
+  // reset the timer on every single pass of the main loop and quietly turn the
+  // watchdog above into a no-op.
   ArduinoOTA.handle();
 }

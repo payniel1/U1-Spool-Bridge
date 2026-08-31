@@ -303,10 +303,11 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
       reboots, polls the reader for five minutes with the <b>radio switched off</b>,
       then comes back on its own. Watch it on the USB serial console &mdash; it is
       off the network for the whole five minutes.</p>
-    <p class="hint">No I2C errors with the radio off means WiFi transmit current is
-      browning out the PN532: fit 100&nbsp;&micro;F + 0.1&nbsp;&micro;F across its
-      VCC/GND, or turn TX power down in Settings. Errors anyway means the wiring is
-      at fault &mdash; shorten SDA/SCL and check the pull-ups.</p>
+    <p class="hint">If the reader stays up for the whole five minutes, WiFi transmit
+      current is browning out the PN532: fit 100&nbsp;&micro;F + 0.1&nbsp;&micro;F
+      across its VCC/GND, or turn TX power down in Settings. If it drops out anyway
+      the power is not the problem &mdash; shorten the two signal wires, and check
+      RSTO is connected, because recovery cannot work without it.</p>
     <div class="row" style="margin-top:12px">
       <button class="ghost" id="diaggo">Run 5-minute radio-off test</button>
     </div>
@@ -1534,7 +1535,7 @@ function connect(){
     const m=JSON.parse(e.data);
     if(m.ev==="status"){
       setDot("d-rd",m.reader?(m.resets?"idle":"on"):"off");
-      // A reader that keeps needing bus resets still works, but the wiring is
+      // A reader that keeps needing resets still works, but the wiring is
       // telling you something. Amber, not green, and say how many.
       $("t-rd").textContent=m.resets?`Reader (${m.resets} resets)`:"Reader";
       setDot("d-wf",m.wifi?"on":"off");
@@ -1577,8 +1578,8 @@ function connect(){
         presenceOnly=!!m.presenceOnly;paintBackendHint();paintBackendPill();}
       if(m.slots){slots=m.slots;slotsKnown=!!m.slotsKnown;slotsErr=m.slotsErr||"";paintLoaded();}
       $("diagnow").textContent=m.resets
-        ? `This reader has had to reset its I2C bus ${m.resets} time(s) since boot.`
-        : "No bus resets since boot.";
+        ? `This reader has had to be reset ${m.resets} time(s) since boot.`
+        : "No reader resets since boot.";
       $("ver").textContent=`${m.chip||"esp32"} - firmware ${m.version} - `
         +`PN532 fw ${m.pn532||"n/a"} - uptime ${m.uptime}s`;
     }else if(m.ev==="tag"){

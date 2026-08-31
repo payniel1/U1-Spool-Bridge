@@ -189,6 +189,7 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
     <span class="pill"><i class="dot" id="d-wf"></i><span id="t-wf">WiFi</span></span>
     <span class="pill" id="p-band" hidden><i class="dot" id="d-bd"></i><span id="t-bd">Band</span></span>
     <span class="pill"><i class="dot" id="d-pr"></i><span id="t-pr">Printer</span></span>
+    <span class="pill" id="p-be" hidden title=""><i class="dot" id="d-be"></i><span id="t-be"></span></span>
     <span class="pill" id="p-sm" hidden><i class="dot" id="d-sm"></i>Spoolman</span>
   </div>
 </header>
@@ -302,10 +303,11 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
       reboots, polls the reader for five minutes with the <b>radio switched off</b>,
       then comes back on its own. Watch it on the USB serial console &mdash; it is
       off the network for the whole five minutes.</p>
-    <p class="hint">No I2C errors with the radio off means WiFi transmit current is
-      browning out the PN532: fit 100&nbsp;&micro;F + 0.1&nbsp;&micro;F across its
-      VCC/GND, or turn TX power down in Settings. Errors anyway means the wiring is
-      at fault &mdash; shorten SDA/SCL and check the pull-ups.</p>
+    <p class="hint">If the reader stays up for the whole five minutes, WiFi transmit
+      current is browning out the PN532: fit 100&nbsp;&micro;F + 0.1&nbsp;&micro;F
+      across its VCC/GND, or turn TX power down in Settings. If it drops out anyway
+      the power is not the problem &mdash; shorten the two signal wires, and check
+      RSTO is connected, because recovery cannot work without it.</p>
     <div class="row" style="margin-top:12px">
       <button class="ghost" id="diaggo">Run 5-minute radio-off test</button>
     </div>
@@ -325,6 +327,14 @@ code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
         <div><label>Printer host / IP</label><input id="s-host" placeholder="192.168.1.50"></div>
         <div><label>Printer port</label><input type="number" id="s-port" value="80"></div>
         <div><label>Moonraker API key</label><input id="s-key" type="password" placeholder="(unchanged)"></div>
+        <div><label>Printer backend</label>
+          <select id="s-backend">
+            <option value="0">Auto &mdash; detect, and fix itself</option>
+            <option value="1">paxx12 Extended Firmware</option>
+            <option value="2">Stock firmware + Bespok3d</option>
+          </select>
+          <p class="hint" id="s-backendhint" style="margin:6px 0 0"></p>
+        </div>
         <div><label>WiFi SSID</label><input id="s-ssid"></div>
         <div><label>WiFi password</label><input id="s-pass" type="password" placeholder="(unchanged)"></div>
         <div id="band-row" hidden><label>WiFi band</label><select id="s-band">
@@ -445,6 +455,53 @@ const refVersion=()=>myVersion||(fwSelf&&fwSelf.version)||"";
 // CARD_UID matches a tag this box has read gets marked, so across a fleet you can
 // see which drybox fed which slot.
 let slots=[], slotsKnown=false, slotsErr="";
+let backendName="", backendKnown=false, backendConfirmed=false,
+    backendPinned=false, presenceOnly=false;
+
+// Three states worth telling apart, because they mean different things:
+//   pinned    — you chose it; detection is deliberately ignored
+//   confirmed — a send settled it, which is the only direct evidence there is
+//   inferred  — the 15s status probe recognised the shape, nothing more
+// Anything else is still the opening assumption and says so.
+function paintBackendPill(){
+  const pill=$("p-be"), t=$("t-be"); if(!pill||!t)return;
+  if(!backendName){pill.hidden=true;return;}
+  pill.hidden=false;
+  const how = backendPinned?"pinned"
+            : backendConfirmed?"confirmed by a send"
+            : backendKnown?"inferred from the printer's reply, not yet confirmed by a send"
+            : "assumed \u2014 nothing has confirmed it yet";
+  t.textContent=backendName+(backendPinned?" \u00B7 pinned":backendConfirmed?"":" ?");
+  pill.title=`Printer backend: ${backendName} (${how}).`;
+  setDot("d-be", backendPinned||backendConfirmed?"on":backendKnown?"idle":"off");
+}
+
+function paintBackendHint(){
+  const el=$("s-backendhint"), sel=$("s-backend"); if(!el||!sel)return;
+  const v=+sel.value||0;
+  let t;
+  if(v===1){
+    t="Sends CARD_TYPE and reads the printer back. If a send is refused for an "
+     +"unknown field, this pinned setting is why \u2014 the box will say so "
+     +"rather than working around it.";
+  }else if(v===2){
+    t="Leaves CARD_TYPE out: the Bespok3d handler validates the whole info "
+     +"object and rejects the entire request over one key it does not know. "
+     +"\u201cLoaded in the printer\u201d still works \u2014 filament_detect is a stock "
+     +"object \u2014 but it reports no tag UID, so the THIS BOX badge cannot appear.";
+  }else{
+    t="Works it out from the printer, and if a send is refused for an unknown "
+     +"field it drops the Extended-only ones and retries.";
+  }
+  if(backendName){
+    const how = backendPinned?"pinned here"
+              : backendConfirmed?"confirmed by a send"
+              : backendKnown?"inferred from the printer's reply, not yet confirmed by a send"
+              : "assumed \u2014 nothing has confirmed it";
+    t+=` Currently: ${backendName} (${how}).`;
+  }
+  el.textContent=t;
+}
 const myUids=new Set();
 
 // What the dryboxes themselves say is sitting in each slot of THIS printer.
@@ -520,7 +577,14 @@ function paintLoaded(){
     `<p class="hint">Rows marked <b>IN THE BOX</b> come from the drybox's own `
    +`reader. The printer only reports filament data for a slot once it has that `
    +`filament in it, so until you load it these are the only source.</p>`);
-  if(slotsErr)el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
+  if(presenceOnly){
+    el.insertAdjacentHTML("beforeend",
+      `<p class="hint">This printer reports which slots are <b>occupied</b> but not `
+     +`what is in them \u2014 it has no queryable <code>filament_detect</code>. `
+     +`Everything above that names a filament came from a drybox.</p>`);
+  }else if(slotsErr){
+    el.insertAdjacentHTML("beforeend",`<p class="hint">${slotsErr}</p>`);
+  }
 }
 
 function paintTabs(){
@@ -749,7 +813,8 @@ function fwInspect(buf){
   if(kv.tgt&&kv.tgt!==chip)
     return {err:"the image header says "+chip+" but the build marker says "+kv.tgt
                +" — refusing to guess"};
-  return {chip,fw:kv.fw||"?",tgt:kv.tgt||chip,bus:kv.bus||"?",rc:kv.rc||"1",size:b.length};
+  return {chip,fw:kv.fw||"?",tgt:kv.tgt||chip,bus:kv.bus||"?",rc:kv.rc||"1",
+          pins:kv.pins||"",size:b.length};
 }
 
 // Everything the plan needs about one box, self included.
@@ -773,6 +838,16 @@ function fwJudge(box,img){
   if(box.otaEnabled===false) return {go:false,hard:true, why:"OTA is switched off on this box"};
   if(box.target&&box.target!==img.tgt)
     return {go:false,hard:true, why:"this box is "+box.target+", the image is "+img.tgt};
+  // Same chip, different board. The header cannot see this — a XIAO C5 and a
+  // C5 devkit are both esp32c5 — so without the pin triple the image installs
+  // happily and the reader goes quiet on the wrong GPIOs. Hard, because there
+  // is no reason to want it: update a devkit box from a devkit box.
+  if(box.pins&&img.pins&&box.pins!==img.pins){
+    const gp=t=>"GPIO "+t.split(".").join("/");
+    return {go:false,hard:true,why:"this box has its reader on "+gp(box.pins)
+                                  +", the image is built for "+gp(img.pins)
+                                  +" — same chip, different board"};
+  }
   if(box.bus&&box.bus!==img.bus)
     return {go:false,hard:false,why:"box runs the "+box.bus+" build, image is "+img.bus
                                    +" — its reader would stop working"};
@@ -783,10 +858,16 @@ function fwJudge(box,img){
   // did not run. Say that out loud rather than letting a blank row read as a
   // clean bill of health.
   const blind=!box.bus&&!box.target;
+  // A box from before the pin triple existed reports bus and target but no
+  // pins, so the check above did not run. Say which check was skipped rather
+  // than letting an unverified row look verified.
+  const noPins=!blind&&!box.pins&&img.pins;
   return {go:true,hard:false,
           why:(box.version||"?")+" → "+img.fw
              +(blind?" · too old to report its build — check this is the "
-                    +img.bus+" image":"")};
+                    +img.bus+" image":"")
+             +(noPins?" · too old to report its wiring — check this image is "
+                     +"for this board":"")};
 }
 
 function fwRow(box,plan,idx){
@@ -1378,9 +1459,12 @@ $("test").onclick=async()=>{
   log("pinging printer...");
 };
 
+$("s-backend").onchange=paintBackendHint;
+
 $("save").onclick=async()=>{
   const body={
     printerHost:$("s-host").value, printerPort:+$("s-port").value,
+    printerBackend:+$("s-backend").value,
     readerChannel, wifiSsid:$("s-ssid").value,
     scanIntervalMs:+$("s-scan").value, wifiBand:+$("s-band").value,
     wifiTxPower:+$("s-txp").value,
@@ -1410,6 +1494,7 @@ $("save").onclick=async()=>{
 async function loadSettings(){
   const s=await(await fetch("/api/settings")).json();
   $("s-host").value=s.printerHost; $("s-port").value=s.printerPort;
+  $("s-backend").value=String(s.printerBackend||0); paintBackendHint();
   $("s-ssid").value=s.wifiSsid;    $("s-scan").value=s.scanIntervalMs;
   $("s-band").value=s.wifiBand||0;
   $("s-txp").value=s.wifiTxPower||0;
@@ -1450,7 +1535,7 @@ function connect(){
     const m=JSON.parse(e.data);
     if(m.ev==="status"){
       setDot("d-rd",m.reader?(m.resets?"idle":"on"):"off");
-      // A reader that keeps needing bus resets still works, but the wiring is
+      // A reader that keeps needing resets still works, but the wiring is
       // telling you something. Amber, not green, and say how many.
       $("t-rd").textContent=m.resets?`Reader (${m.resets} resets)`:"Reader";
       setDot("d-wf",m.wifi?"on":"off");
@@ -1488,10 +1573,13 @@ function connect(){
       $("fwnow").textContent=`Running ${m.version} on ${m.chip||"esp32"}. `
         +`Upload a firmware.bin to update over the air — nothing is committed `
         +`until the whole image verifies.`;
+      if(m.backend){backendName=m.backend;backendKnown=!!m.backendKnown;
+        backendConfirmed=!!m.backendConfirmed;backendPinned=!!m.backendPinned;
+        presenceOnly=!!m.presenceOnly;paintBackendHint();paintBackendPill();}
       if(m.slots){slots=m.slots;slotsKnown=!!m.slotsKnown;slotsErr=m.slotsErr||"";paintLoaded();}
       $("diagnow").textContent=m.resets
-        ? `This reader has had to reset its I2C bus ${m.resets} time(s) since boot.`
-        : "No bus resets since boot.";
+        ? `This reader has had to be reset ${m.resets} time(s) since boot.`
+        : "No reader resets since boot.";
       $("ver").textContent=`${m.chip||"esp32"} - firmware ${m.version} - `
         +`PN532 fw ${m.pn532||"n/a"} - uptime ${m.uptime}s`;
     }else if(m.ev==="tag"){

@@ -299,8 +299,8 @@ static void enrichFromSpoolman(SpoolData &d) {
 // Radio-off self test.
 //
 // The whole "is it WiFi browning out the PN532?" question is answerable in one
-// run: keep the reader polling and never turn the radio on. If the bus survives
-// with the radio dark and wedges without it, the answer is power, and no amount
+// run: keep the reader polling and never turn the radio on. If the reader survives
+// with the radio dark and drops out without it, the answer is power, and no amount
 // of firmware will fix it. Kept in RTC memory so it survives the soft reset
 // used to enter it, and cleared on the way in so a single run can't strand a
 // box with its radio off.
@@ -371,10 +371,11 @@ void setup() {
         "\n*** RADIO-OFF SELF TEST ***\n"
         "WiFi is off. The reader will poll on its own for 5 minutes, then the\n"
         "board reboots back to normal by itself.\n"
-        "  - no I2C errors in 5 minutes  -> the radio was the trigger. Fit the\n"
-        "    100uF + 0.1uF across the PN532's VCC/GND, or turn TX power down.\n"
-        "  - errors anyway               -> it is the wiring, not the power.\n"
-        "    Shorten SDA/SCL and check the pull-ups.\n");
+        "  - reader stays up for 5 minutes -> the radio was the trigger. Fit\n"
+        "    the 100uF + 0.1uF across the PN532's VCC/GND, or turn TX power\n"
+        "    down.\n"
+        "  - it drops out anyway           -> it is the wiring or the module,\n"
+        "    not the power. Shorten the two signal wires and check RSTO.\n");
     return;  // no web server, no OTA, nothing that could key the transmitter
   }
 
@@ -382,9 +383,9 @@ void setup() {
 
   // Bringing the radio up is the roughest thing that happens to the 3V3 rail
   // all boot, and the reader is sitting there through all of it with nobody
-  // talking to it. If it took a hit we find out here, on a quiet bus, rather
-  // than discovering it several seconds into the poll loop with the I2C driver
-  // already latched into ESP_ERR_INVALID_STATE.
+  // talking to it. If it took a hit we find out here, while nothing else is
+  // going on, rather than several seconds into the poll loop with a scan
+  // already in flight.
   for (uint8_t i = 0; i < READER_COUNT; i++) {
     if (!g_readers[i].ready()) continue;
     if (g_readers[i].alive()) continue;
@@ -407,7 +408,7 @@ void loop() {
   if (s_radioTest) {
     if (millis() - s_radioTestT0 >= RADIO_TEST_MS) {
       Serial.printf(
-          "\n*** RADIO-OFF SELF TEST DONE — %u bus resets in 5 minutes ***\n"
+          "\n*** RADIO-OFF SELF TEST DONE — %u reader resets in 5 minutes ***\n"
           "Rebooting back to normal.\n",
           (unsigned)g_readers[0].recoveries());
       delay(200);
@@ -417,8 +418,9 @@ void loop() {
     String    note;
     if (g_readers[0].ready()) {
       ScanResult res = g_readers[0].poll(d, note);
-      if (res == SCAN_BUS_ERROR) {
-        Serial.printf("[%lus] bus wedged with the radio OFF — resetting\n",
+      if (res == SCAN_READER_ERROR) {
+        Serial.printf("[%lus] reader stopped answering with the radio OFF"
+                      " — resetting\n",
                       (unsigned long)((millis() - s_radioTestT0) / 1000));
         if (!g_readers[0].recover()) {
           Serial.printf("[%lus] reset failed: %s\n",
@@ -441,7 +443,7 @@ void loop() {
   webLoop();
   otaLoop();
 
-  // While an image is being written, stay out of the way: no I2C traffic, no
+  // While an image is being written, stay out of the way: no reader traffic, no
   // HTTP to the printer, nothing that could stall the flash write.
   if (otaBusy()) {
     delay(1);
@@ -468,14 +470,14 @@ void loop() {
                 (esp_random() % (g_settings.scanIntervalMs / 4 + 1));
     for (uint8_t r = 0; r < READER_COUNT; r++) {
       // A reader that's down gets another go periodically, so fixing the
-      // wiring — or a bus that wedged and refused to come back — doesn't need
-      // a reboot or a trip to the drybox.
+      // wiring — or a module that refused to come back — doesn't need a
+      // reboot or a trip to the drybox.
       if (!g_readers[r].ready()) {
-        // Last resort. If resetting the bus hasn't worked several times over,
+        // Last resort. If resetting the reader hasn't worked several times over,
         // the fault is below anything this firmware can reach — a rail that
         // won't hold, or a PN532 stuck in its own bad state. A full chip reset
-        // clears the I2C peripheral outright and re-inits the module from
-        // cold, which is the one thing left to try. The uptime guard means a
+        // tears down the serial port and re-inits the module from cold, which
+        // is the one thing left to try. The uptime guard means a
         // board that can never read still stays up long enough to be reflashed
         // over the air rather than boot-looping out of reach.
         // Three conditions, all of them load-bearing:
@@ -586,30 +588,33 @@ void loop() {
                ": spool removed");
         webBroadcastTag(r, lane.spool, "");
         webBroadcastStatus();
-      } else if (res == SCAN_BUS_ERROR) {
-        // The IDF I2C driver latches into ESP_ERR_INVALID_STATE after a failed
-        // transaction and never recovers on its own — every later call fails
-        // the same way. Reset the bus rather than spew errors forever.
+      } else if (res == SCAN_READER_ERROR) {
+        // The module can stop answering on its own — a brownout during a WiFi
+        // burst, a truncated frame leaving it out of step, or the PN532 simply
+        // latching up. A UART has nothing to unwedge, so this is not the I2C
+        // recovery it used to be: it closes the port, pulses RSTO and re-inits
+        // from cold, which is the only lever there is. Do that rather than
+        // spew errors forever.
         //
         // The banners are deliberately loud and go straight to Serial: the
         // driver's own error spam drowns out anything subtle, and this is the
         // one line that tells you whether recovery is even running.
         {
           uint32_t prev = g_readers[r].lastRecoveryAt();
-          Serial.printf("\n*** BUS RECOVERY: reader %d %s", r + 1, note.c_str());
+          Serial.printf("\n*** READER RECOVERY: reader %d %s", r + 1, note.c_str());
           // The interval is the diagnosis. Every few seconds is a firmware or
           // signal problem; every few hours is a rail that needs the capacitors.
           if (prev) Serial.printf(" (%lu s since the last one)",
                                   (unsigned long)((now - prev) / 1000));
           Serial.printf(" ***\n");
         }
-        webLog("reader " + String(r + 1) + " " + note + " — resetting the bus",
+        webLog("reader " + String(r + 1) + " " + note + " — resetting it",
                "bad");
         if (g_readers[r].recover()) {
           consecFail[r]  = 0;
           firstFailAt[r] = 0;
           s_readerReboots = 0;
-          Serial.printf("*** BUS RECOVERY: reader %d OK (reset #%u) ***\n\n",
+          Serial.printf("*** READER RECOVERY: reader %d OK (reset #%u) ***\n\n",
                         r + 1, (unsigned)g_readers[r].recoveries());
           webLog("reader " + String(r + 1) + " recovered (reset #" +
                      String(g_readers[r].recoveries()) + ")",
@@ -617,7 +622,7 @@ void loop() {
         } else {
           if (!firstFailAt[r]) firstFailAt[r] = now ? now : 1;
           consecFail[r]++;
-          Serial.printf("*** BUS RECOVERY: reader %d FAILED (%u in a row): %s ***\n\n",
+          Serial.printf("*** READER RECOVERY: reader %d FAILED (%u in a row): %s ***\n\n",
                         r + 1, (unsigned)consecFail[r], g_readers[r].lastError());
           webLog("reader " + String(r + 1) + " reset failed: " +
                      String(g_readers[r].lastError()) + " — retrying in 30 s",

@@ -143,7 +143,7 @@ void webBroadcastStatus() {
     l["present"] = g_lanes[i].spool.valid;
     l["pending"] = g_lanes[i].gate.havePending;
     l["armed"]   = g_lanes[i].gate.armed;
-    // Bus resets since boot. Non-zero means this box's wiring is marginal and
+    // Reader resets since boot. Non-zero means this box's wiring is marginal and
     // wants looking at, even though it's currently working.
     l["resets"]  = g_readers[i].recoveries();
     if (!g_readers[i].ready()) l["err"] = g_readers[i].lastError();
@@ -188,6 +188,14 @@ void webBroadcastStatus() {
   // reader, which is when you actually want to check it.
   doc["slotsKnown"] = g_slotsKnown;
   if (g_slotsErr.length()) doc["slotsErr"] = g_slotsErr;
+
+  // Which side is answering /printer/filament_detect/set, and whether anything
+  // has actually told us or we are still running on the assumption.
+  doc["backend"]      = u1BackendName(u1BackendEffective());
+  doc["backendKnown"]     = u1BackendKnown();
+  doc["backendConfirmed"] = u1BackendConfirmed();
+  doc["backendPinned"]    = g_settings.printerBackend != U1_BACKEND_AUTO;
+  doc["presenceOnly"] = u1SlotsPresenceOnly();
   JsonArray sl = doc["slots"].to<JsonArray>();
   for (int i = 0; i < 4; i++) {
     JsonObject o = sl.add<JsonObject>();
@@ -246,6 +254,7 @@ void webBriefJson(String &out) {
   doc["otaEnabled"]  = g_settings.otaEnabled;
   doc["otaLocked"]   = g_settings.otaPassword[0] != 0;
   doc["rc"]          = READER_COUNT;
+  doc["pins"]        = FW_PINS_STR;   // same chip, different board -> different triple
   doc["group"]       = g_groupName;   // "" means: group me by my printer
   doc["slot"]      = g_settings.readerChannel[0] + 1;  // headline slot
 
@@ -394,8 +403,8 @@ void webBegin() {
                        oldBand != g_settings.wifiBand);
 
         // TX power, unlike the band, takes effect on a live association — so it
-        // can be tried without a reboot. Handy when you're bisecting a box that
-        // keeps wedging its I2C bus.
+        // can be tried without a reboot. Handy when you're bisecting a box whose
+        // reader keeps dropping out.
         if (ok && !reboot && WiFi.status() == WL_CONNECTED) {
           // 0 means "put it back where it was": the part's default is 20 dBm,
           // so restoring 19.5 would quietly leave a limit in place.
@@ -470,7 +479,7 @@ void webBegin() {
   });
 
   // Reboot into a five-minute run with the radio off, to find out whether WiFi
-  // is what's knocking the I2C bus over. Watch it on the serial console — the
+  // is what's knocking the reader over. Watch it on the serial console — the
   // board is deliberately unreachable over the network while it runs, and comes
   // back on its own afterwards.
   server.on("/api/slots", HTTP_POST, [](AsyncWebServerRequest *req) {
@@ -568,6 +577,8 @@ void webBegin() {
         }
 
         s_otaBytes += len;
+        otaNoteActivity();   // the transfer is alive; hold off the stall watchdog
+
         size_t total = req->contentLength();
         if (total) {
           int pct = (int)(((index + len) * 100ULL) / total);

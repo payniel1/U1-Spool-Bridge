@@ -143,7 +143,7 @@ void webBroadcastStatus() {
     l["present"] = g_lanes[i].spool.valid;
     l["pending"] = g_lanes[i].gate.havePending;
     l["armed"]   = g_lanes[i].gate.armed;
-    // Bus resets since boot. Non-zero means this box's wiring is marginal and
+    // Reader resets since boot. Non-zero means this box's wiring is marginal and
     // wants looking at, even though it's currently working.
     l["resets"]  = g_readers[i].recoveries();
     if (!g_readers[i].ready()) l["err"] = g_readers[i].lastError();
@@ -403,8 +403,8 @@ void webBegin() {
                        oldBand != g_settings.wifiBand);
 
         // TX power, unlike the band, takes effect on a live association — so it
-        // can be tried without a reboot. Handy when you're bisecting a box that
-        // keeps wedging its I2C bus.
+        // can be tried without a reboot. Handy when you're bisecting a box whose
+        // reader keeps dropping out.
         if (ok && !reboot && WiFi.status() == WL_CONNECTED) {
           // 0 means "put it back where it was": the part's default is 20 dBm,
           // so restoring 19.5 would quietly leave a limit in place.
@@ -479,7 +479,7 @@ void webBegin() {
   });
 
   // Reboot into a five-minute run with the radio off, to find out whether WiFi
-  // is what's knocking the I2C bus over. Watch it on the serial console — the
+  // is what's knocking the reader over. Watch it on the serial console — the
   // board is deliberately unreachable over the network while it runs, and comes
   // back on its own afterwards.
   server.on("/api/slots", HTTP_POST, [](AsyncWebServerRequest *req) {

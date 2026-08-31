@@ -202,6 +202,7 @@ pio test -e native                           # decoder tests on your PC, no hard
 python3 scripts/check_partitions.py --selftest   # partition guard, no toolchain
 python3 scripts/test_check_partitions.py         # ...and its PlatformIO glue
 python3 test/bespok3d/check.py                   # our payload vs the Bespok3d plugin
+python3 scripts/sync_arduino.py --check          # is the Arduino sketch in step?
 ```
 
 > **Chip id is not board type**, and from **1.17.0** the build marker says so.
@@ -289,14 +290,14 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `native` | Decoder tests on the host, no hardware |
 
 Two binaries ship for the XIAOs, and a second archive covers the SuperMini and
-the C5 devkit. Measured on the **v1.17.0** images:
+the C5 devkit. Measured on the **v1.17.1** images:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,586,992 | 3,342,336 &nbsp;(`default_8MB`) | 47.5% | 45.2% | 60,492 |
-| `firmware-c3.bin` | 1,507,984 | 1,966,080 &nbsp;(`min_spiffs`) | 76.7% | 72.9% | 47,060 |
-| `firmware-c3-supermini.bin` | 1,508,080 | 1,966,080 | 76.7% | 72.9% | 47,060 |
-| `firmware-c5-devkit-n4.bin` | 1,601,568 | 1,966,080 | 81.5% | 77.6% | 60,388 |
+| `firmware-c5.bin` | 1,587,120 | 3,342,336 &nbsp;(`default_8MB`) | 47.5% | 45.2% | 60,492 |
+| `firmware-c3.bin` | 1,508,112 | 1,966,080 &nbsp;(`min_spiffs`) | 76.7% | 72.9% | 47,060 |
+| `firmware-c3-supermini.bin` | 1,508,208 | 1,966,080 | 76.7% | 72.9% | 47,060 |
+| `firmware-c5-devkit-n4.bin` | 1,601,696 | 1,966,080 | 81.5% | 77.6% | 60,388 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -1123,6 +1124,7 @@ test/test_decoders/  67 host-side tests
 test/bespok3d/       our payload run through the Bespok3d plugin's own rules
 test/fixtures/       real filament_detect captures from both kinds of printer
 arduino/u1_spool_bridge/   include/ + src/ flattened into an Arduino IDE sketch
+                    — generated; run scripts/sync_arduino.py, never edit by hand
 docs/               flashing guides, wiring and capacitor pages
 licenses/           GPL-3.0, LGPL-3.0 and LGPL-2.1 texts, for binary releases
 ```
@@ -1198,7 +1200,9 @@ off the network for the whole run, and it prints its verdict there.
 
 - No reader errors in five minutes → WiFi transmit current is browning out the
   PN532. Fit the capacitors, or turn TX power down in Settings.
-- Errors anyway → the wiring is at fault. Shorten the two signal wires.
+- Errors anyway → the power is not the problem. Shorten the two signal wires,
+  and check RSTO is connected — recovery pulses it, so without it a module
+  that stops answering can never be brought back.
 
 Note the board reboots at both ends of the test, so the reset counter is zero
 when it starts and zero again afterwards — read the result from the serial log,

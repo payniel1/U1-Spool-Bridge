@@ -354,7 +354,8 @@ ScanResult TagReader::poll(SpoolData &out, String &note) {
   if (!_nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 50)) {
     _candUidLen = 0;
 
-    // "No tag" and "the bus is wedged" look identical from here, so every so
+    // "No tag" and "the module has stopped answering" look identical from here,
+    // so every so
     // often during a quiet spell, ask the reader something only a live reader
     // can answer. Skipped entirely while a tag is on the antenna.
     if (++_quietPolls >= 5) {
@@ -374,7 +375,7 @@ ScanResult TagReader::poll(SpoolData &out, String &note) {
         if (++_probeFails < 3) return SCAN_NO_TAG;
         _probeFails = 0;
         note = "stopped answering";
-        return SCAN_BUS_ERROR;
+        return SCAN_READER_ERROR;
       }
       _probeFails = 0;
       // getFirmwareVersion() is answered even by a module that has just

@@ -1,8 +1,11 @@
 #include "settings.h"
 
+#include "u1_client.h"
+
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "config.h"
 #include "send_gate.h"
@@ -48,6 +51,7 @@ void Settings::loadDefaults() {
   wifiBand           = BAND_AUTO;
   wifiTxPower        = 0;    // 0 = leave the radio at its default (max)
   printerPort        = 80;   // Moonraker is proxied on :80 on the U1; 7125 also works
+  printerBackend     = U1_BACKEND_AUTO;
   for (uint8_t i = 0; i < MAX_READERS; i++) readerChannel[i] = i & 3;
   forceGenericVendor = false;
   sendCardUid        = true;
@@ -188,6 +192,7 @@ void settingsToJson(String &out) {
   doc["statePollMs"]        = g_settings.statePollMs;
   doc["forceGenericVendor"] = g_settings.forceGenericVendor;
   doc["sendCardUid"]        = g_settings.sendCardUid;
+  doc["printerBackend"]     = g_settings.printerBackend;
   doc["scanIntervalMs"]     = g_settings.scanIntervalMs;
   doc["spoolmanEnabled"]     = g_settings.spoolmanEnabled;
   doc["spoolmanHost"]        = g_settings.spoolmanHost;
@@ -247,7 +252,15 @@ bool settingsFromJson(const String &json, String &err) {
   copyIfPresent(doc["groupName"],   g_groupName,            sizeof(g_groupName));
   copyIfPresent(doc["wifiSsid"],    g_settings.wifiSsid,    sizeof(g_settings.wifiSsid));
   copyIfPresent(doc["hostname"],    g_settings.hostname,    sizeof(g_settings.hostname));
-  copyIfPresent(doc["printerHost"],  g_settings.printerHost,  sizeof(g_settings.printerHost));
+  {
+    // A box repointed at a different printer must not carry the old printer's
+    // backend answer across with it.
+    char before[sizeof(g_settings.printerHost)];
+    snprintf(before, sizeof(before), "%s", g_settings.printerHost);
+    copyIfPresent(doc["printerHost"], g_settings.printerHost,
+                  sizeof(g_settings.printerHost));
+    if (strcmp(before, g_settings.printerHost) != 0) u1BackendForget();
+  }
   copyIfPresent(doc["spoolmanHost"], g_settings.spoolmanHost, sizeof(g_settings.spoolmanHost));
   copyIfPresent(doc["locationFmt"],  g_settings.locationFmt,  sizeof(g_settings.locationFmt));
   copyIfPresent(doc["ntpServer"],    g_settings.ntpServer,    sizeof(g_settings.ntpServer));
@@ -306,6 +319,15 @@ bool settingsFromJson(const String &json, String &err) {
     g_settings.forceGenericVendor = doc["forceGenericVendor"].as<bool>();
   if (!doc["sendCardUid"].isNull())
     g_settings.sendCardUid = doc["sendCardUid"].as<bool>();
+  if (!doc["printerBackend"].isNull()) {
+    const int b = doc["printerBackend"].as<int>();
+    // An out-of-range value means AUTO rather than an error: this is the one
+    // setting that can repair itself, so falling back to it is never wrong.
+    g_settings.printerBackend =
+        (b == U1_BACKEND_EXTENDED || b == U1_BACKEND_STOCK) ? (uint8_t)b
+                                                            : U1_BACKEND_AUTO;
+    u1BackendForget();   // a changed answer must not keep an old latch
+  }
   if (!doc["scanIntervalMs"].isNull())
     g_settings.scanIntervalMs = (uint16_t)constrain(doc["scanIntervalMs"].as<int>(), 100, 5000);
 

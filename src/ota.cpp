@@ -44,7 +44,7 @@ void otaBegin() {
   ArduinoOTA.onStart([]() {
     s_busy = true;
     s_pct  = 0;
-    // Nothing else should be touching the I2C bus or the network while an
+    // Nothing else should be touching the reader or the network while an
     // image is being written.
     webOtaEvent("start", 0, ArduinoOTA.getCommand() == U_FLASH ? "firmware" : "filesystem");
   });
