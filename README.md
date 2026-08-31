@@ -117,7 +117,8 @@ Only the GPIO numbers change per board:
 | **XIAO ESP32-C5** | D4 · GPIO23 | D5 · GPIO24 | D2 · GPIO25 | ships, in service |
 | **XIAO ESP32-C3** | D4 · GPIO6 | D5 · GPIO7 | D2 · GPIO4 | ships |
 | **ESP32-C5-DevKitC-1** *(incl. N4)* | GPIO0 | GPIO1 | GPIO10 | builds, no prebuilt image |
-| C3 devkit / supermini | GPIO6 | GPIO7 | GPIO4 | suggested, builds |
+| **Nologo C3 SuperMini** | GPIO6 | GPIO7 | GPIO4 | builds, no prebuilt image |
+| C3 devkit | GPIO6 | GPIO7 | GPIO4 | suggested, builds |
 
 **The two XIAOs use the same three pads**, D4, D5 and D2, so a drybox harness
 moves between a C5 and a C3 unmodified. Both are drawn out:
@@ -125,9 +126,11 @@ moves between a C5 and a C3 unmodified. Both are drawn out:
 **[docs/wiring-c3.html](docs/wiring-c3.html)** for the C3 — colour-coded, with
 the DIP switches and the pins to avoid.
 
-The two XIAO rows are what ships as a prebuilt binary. The two devkit rows
-build clean and avoid every reserved pin, but no image is released for them —
-you build those from source.
+The two XIAO rows are what ships as a prebuilt binary. The other rows build
+clean and avoid every reserved pin, but no image is released for them — you
+build those from source. The SuperMini and the C5 devkit have environments of
+their own; the C3 devkit is a recommendation that compiles but has not been on
+a bench.
 
 Set them in `platformio.ini` with `-DPIN_PN532_RX=…`, `-DPIN_PN532_TX=…`,
 `-DPIN_PN532_RST=…` if you rewire or use another board.
@@ -201,6 +204,14 @@ python3 scripts/test_check_partitions.py         # ...and its PlatformIO glue
 python3 test/bespok3d/check.py                   # our payload vs the Bespok3d plugin
 ```
 
+> **The fleet updater matches on chip id, which is not the same as board type.**
+> A XIAO ESP32-C5 and a C5 DevKitC-1 are both `esp32c5`, so a XIAO image
+> offered to a devkit box is accepted and installs — and its reader then goes
+> silent, because the XIAO build looks for the PN532 on GPIO 23/24/25.
+> Recoverable over USB, but do not mix C5 board types in one fleet update. The
+> two C3 boards are safe to mix: the SuperMini and the XIAO C3 use the same
+> GPIOs.
+
 **The two images are not interchangeable**, and the fleet updater enforces
 that: it reads the chip id out of the file and refuses any box it does not
 match. A mixed fleet therefore updates in two passes, each run from a box of
@@ -266,6 +277,8 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `seeed_xiao_esp32c5-ota` | The same env with `upload_protocol = espota` |
 | `seeed_xiao_esp32c3` | The XIAO C3, `min_spiffs`. Ships as `firmware-c3.bin`. |
 | `seeed_xiao_esp32c3-ota` | The same, over the network |
+| `nologo_esp32c3_super_mini` | The C3 SuperMini. Same GPIOs as the XIAO C3, plus a user LED on GPIO8. |
+| `nologo_esp32c3_super_mini-ota` | The same, over the network |
 | `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
@@ -316,7 +329,7 @@ Built and verified on non-XIAO boards, all figures from the 1.16.0 build:
 | Board id | Env | Linked | Image / slot | Static RAM |
 |---|---|---|---|---|
 | `esp32-c3-devkitm-1` | `seeed_xiao_esp32c3`, repinned | 73.6% | — | 47,840 |
-| `nologo_esp32c3_super_mini` | `seeed_xiao_esp32c3`, repinned | 72.6% | — | 47,060 |
+| `nologo_esp32c3_super_mini` | **`nologo_esp32c3_super_mini`** | 72.8% | 76.6% | 47,060 |
 | `esp32-c5-devkitc1-n4` | **`esp32-c5-devkitc-1`** | 77.3% | 81.1% | 60,380 |
 
 Two things you must set per board:
