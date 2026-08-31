@@ -204,13 +204,19 @@ python3 scripts/test_check_partitions.py         # ...and its PlatformIO glue
 python3 test/bespok3d/check.py                   # our payload vs the Bespok3d plugin
 ```
 
-> **The fleet updater matches on chip id, which is not the same as board type.**
-> A XIAO ESP32-C5 and a C5 DevKitC-1 are both `esp32c5`, so a XIAO image
-> offered to a devkit box is accepted and installs — and its reader then goes
-> silent, because the XIAO build looks for the PN532 on GPIO 23/24/25.
-> Recoverable over USB, but do not mix C5 board types in one fleet update. The
-> two C3 boards are safe to mix: the SuperMini and the XIAO C3 use the same
-> GPIOs.
+> **Chip id is not board type**, and from **1.17.0** the build marker says so.
+> A XIAO ESP32-C5 and a C5 DevKitC-1 are both `esp32c5`, so the image header
+> matches and the updater used to accept a XIAO image for a devkit box: it
+> installs cleanly and the reader then goes silent on GPIO 23/24/25 instead of
+> 0/1/10. The marker now carries the reader's GPIOs —
+> `…|rc=1|pins=23.24.25|end` — and a mismatch is **BLOCKED** with both triples
+> named.
+>
+> It takes two to check. A box on older firmware reports no wiring, so its row
+> says *"too old to report its wiring"* rather than pretending it was checked.
+> Until the whole fleet is on 1.17.0, keep updating each board type from a box
+> of that type. The two C3 boards stay interchangeable either way — SuperMini
+> and XIAO C3 share the same GPIOs, and their markers agree.
 
 **The two images are not interchangeable**, and the fleet updater enforces
 that: it reads the chip id out of the file and refuses any box it does not
@@ -282,13 +288,15 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `esp32-c5-devkitc-1` | The C5 devkit, **N4 included**. Devkit pins, `min_spiffs`. No prebuilt image. |
 | `native` | Decoder tests on the host, no hardware |
 
-Two binaries ship, one per chip. Measured on the images in the **v1.16.2**
-release:
+Two binaries ship for the XIAOs, and a second archive covers the SuperMini and
+the C5 devkit. Measured on the **v1.17.0** images:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,585,888 | 3,342,336 &nbsp;(`default_8MB`) | 47.4% | 45.2% | 60,492 |
-| `firmware-c3.bin` | 1,506,880 | 1,966,080 &nbsp;(`min_spiffs`) | 76.6% | 72.8% | 47,060 |
+| `firmware-c5.bin` | 1,586,992 | 3,342,336 &nbsp;(`default_8MB`) | 47.5% | 45.2% | 60,492 |
+| `firmware-c3.bin` | 1,507,984 | 1,966,080 &nbsp;(`min_spiffs`) | 76.7% | 72.9% | 47,060 |
+| `firmware-c3-supermini.bin` | 1,508,080 | 1,966,080 | 76.7% | 72.9% | 47,060 |
+| `firmware-c5-devkit-n4.bin` | 1,601,568 | 1,966,080 | 81.5% | 77.6% | 60,388 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -681,7 +689,7 @@ Before anything is sent, the browser reads the image and checks it against every
 | `fw=` version | skipped if the box already has it |
 
 Those last three come from a marker the firmware bakes into its own image
-(`U1SB-FINGERPRINT-v1|fw=…|tgt=…|bus=…|rc=…|end`), so a file that is a valid ESP32
+(`U1SB-FINGERPRINT-v1|fw=…|tgt=…|bus=…|rc=…|pins=…|end`), so a file that is a valid ESP32
 image but belongs to some other project is refused outright. The ESP-IDF app
 descriptor cannot do this job — its version field is filled in by arduino-lib-builder
 with its own git hash.

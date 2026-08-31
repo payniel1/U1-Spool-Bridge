@@ -449,7 +449,14 @@ the status light compiles out).
 
 **A mixed fleet updates in two passes, one per chip.** The fleet updater reads
 the chip id out of the image and blocks any box it does not match, so a C5
-image offered to a C3 box is refused outright rather than flashed. Because the
+image offered to a C3 box is refused outright rather than flashed.
+
+From **1.17.0** it also blocks a mismatch the chip id cannot see. A XIAO C5 and
+a C5 DevKitC-1 are both `esp32c5`, and the XIAO build drives the reader on GPIO
+23/24/25 where the devkit's is on 0/1/10 — so the image installs, reboots, and
+the reader is silent. The build marker now carries that triple and the plan
+refuses the combination, naming both. Both ends have to be on 1.17.0 for the
+check to run; an older box reports no wiring and its row says so. Because the
 box you are driving from is the one that holds the image for the others, you
 have to run each pass from a box of that chip &mdash; press **Update all
 boxes** from a C5 box for the C5 image, and from a C3 box for the C3 one. If
@@ -486,10 +493,11 @@ every box it found:
 | chip id in the ESP32 header (`0x17` = C5, `0x0D` = C6) | the box's chip | **blocked**, and you cannot override it |
 | `bus=` in the build marker | the box's transport | offered unticked — it would boot, but that box's reader would stop working |
 | `rc=` in the build marker | how many readers the box drives | offered unticked, same reason |
+| `pins=` in the build marker | which GPIOs the reader is on | **blocked** — same chip, different board |
 | `fw=` in the build marker | the box's current version | unticked if it already has it |
 
 The build marker is a string the firmware bakes into itself
-(`U1SB-FINGERPRINT-v1|fw=…|tgt=…|bus=…|rc=…|end`), so a file that is a valid
+(`U1SB-FINGERPRINT-v1|fw=…|tgt=…|bus=…|rc=…|pins=…|end`), so a file that is a valid
 ESP32 image but belongs to some other project is refused outright.
 
 Boxes running firmware older than 1.12.0 do not report their transport or chip

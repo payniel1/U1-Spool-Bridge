@@ -254,6 +254,7 @@ void webBriefJson(String &out) {
   doc["otaEnabled"]  = g_settings.otaEnabled;
   doc["otaLocked"]   = g_settings.otaPassword[0] != 0;
   doc["rc"]          = READER_COUNT;
+  doc["pins"]        = FW_PINS_STR;   // same chip, different board -> different triple
   doc["group"]       = g_groupName;   // "" means: group me by my printer
   doc["slot"]      = g_settings.readerChannel[0] + 1;  // headline slot
 

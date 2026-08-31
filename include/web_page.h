@@ -812,7 +812,8 @@ function fwInspect(buf){
   if(kv.tgt&&kv.tgt!==chip)
     return {err:"the image header says "+chip+" but the build marker says "+kv.tgt
                +" — refusing to guess"};
-  return {chip,fw:kv.fw||"?",tgt:kv.tgt||chip,bus:kv.bus||"?",rc:kv.rc||"1",size:b.length};
+  return {chip,fw:kv.fw||"?",tgt:kv.tgt||chip,bus:kv.bus||"?",rc:kv.rc||"1",
+          pins:kv.pins||"",size:b.length};
 }
 
 // Everything the plan needs about one box, self included.
@@ -836,6 +837,16 @@ function fwJudge(box,img){
   if(box.otaEnabled===false) return {go:false,hard:true, why:"OTA is switched off on this box"};
   if(box.target&&box.target!==img.tgt)
     return {go:false,hard:true, why:"this box is "+box.target+", the image is "+img.tgt};
+  // Same chip, different board. The header cannot see this — a XIAO C5 and a
+  // C5 devkit are both esp32c5 — so without the pin triple the image installs
+  // happily and the reader goes quiet on the wrong GPIOs. Hard, because there
+  // is no reason to want it: update a devkit box from a devkit box.
+  if(box.pins&&img.pins&&box.pins!==img.pins){
+    const gp=t=>"GPIO "+t.split(".").join("/");
+    return {go:false,hard:true,why:"this box has its reader on "+gp(box.pins)
+                                  +", the image is built for "+gp(img.pins)
+                                  +" — same chip, different board"};
+  }
   if(box.bus&&box.bus!==img.bus)
     return {go:false,hard:false,why:"box runs the "+box.bus+" build, image is "+img.bus
                                    +" — its reader would stop working"};
@@ -846,10 +857,16 @@ function fwJudge(box,img){
   // did not run. Say that out loud rather than letting a blank row read as a
   // clean bill of health.
   const blind=!box.bus&&!box.target;
+  // A box from before the pin triple existed reports bus and target but no
+  // pins, so the check above did not run. Say which check was skipped rather
+  // than letting an unverified row look verified.
+  const noPins=!blind&&!box.pins&&img.pins;
   return {go:true,hard:false,
           why:(box.version||"?")+" → "+img.fw
              +(blind?" · too old to report its build — check this is the "
-                    +img.bus+" image":"")};
+                    +img.bus+" image":"")
+             +(noPins?" · too old to report its wiring — check this image is "
+                     +"for this board":"")};
 }
 
 function fwRow(box,plan,idx){

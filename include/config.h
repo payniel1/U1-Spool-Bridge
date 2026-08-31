@@ -104,7 +104,7 @@
 
 #define AP_SSID     "U1-SpoolBridge"
 #define AP_PASSWORD "spoolbridge"   // >= 8 chars, change if you like
-#define FW_VERSION  "1.16.2"
+#define FW_VERSION  "1.17.0"
 
 // ---------------------------------------------------------------------------
 // Build fingerprint.
@@ -124,7 +124,18 @@
 // Hence a marker of our own, emitted into .rodata where a browser can scan for
 // it. Grammar is deliberately dull so the parser can be too:
 //
-//   U1SB-FINGERPRINT-v1|fw=1.12.0|tgt=esp32c5|bus=uart|rc=1|end
+//   U1SB-FINGERPRINT-v1|fw=1.17.0|tgt=esp32c5|bus=uart|rc=1|pins=23.24.25|end
+//
+// `pins` is there because `tgt` is not enough. A Seeed XIAO ESP32-C5 and an
+// Espressif C5-DevKitC-1 are both esp32c5, so the chip id in the header
+// matches and the fleet updater used to accept a XIAO image for a devkit box.
+// It installs cleanly, reboots, and the reader is then silent — the XIAO build
+// looks for the PN532 on GPIO 23/24/25 and the devkit's is on 0/1/10. Nothing
+// in the image said otherwise until this field did.
+//
+// Parsed as key=value pairs, so adding one does not break a reader that does
+// not know it; a box built before this simply reports no `pins` and the
+// updater says it could not check rather than pretending it did.
 //
 // It is referenced by /api/brief, so the linker cannot drop it and the string
 // a box reports about itself is the same string baked into its image.
@@ -145,10 +156,16 @@
 #define FW_TARGET_STR "unknown"
 #endif
 
-#define FW_RC_STR2(x) #x
-#define FW_RC_STR(x)  FW_RC_STR2(x)
+#define FW_STR2(x) #x
+#define FW_STR(x)  FW_STR2(x)
+
+// The three GPIOs the reader is wired to, in RX.TX.RST order. Same chip,
+// different board means a different triple, and that is the whole point.
+#define FW_PINS_STR                                                           \
+  FW_STR(PIN_PN532_RX) "." FW_STR(PIN_PN532_TX) "." FW_STR(PIN_PN532_RST)
 
 #define FW_FINGERPRINT_PREFIX "U1SB-FINGERPRINT-v1|"
 #define FW_FINGERPRINT                                                        \
   FW_FINGERPRINT_PREFIX "fw=" FW_VERSION "|tgt=" FW_TARGET_STR                \
-                        "|bus=" FW_BUS_STR "|rc=" FW_RC_STR(READER_COUNT) "|end"
+                        "|bus=" FW_BUS_STR "|rc=" FW_STR(READER_COUNT)        \
+                        "|pins=" FW_PINS_STR "|end"
