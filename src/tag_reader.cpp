@@ -442,8 +442,15 @@ ScanResult TagReader::poll(SpoolData &out, String &note) {
     decoded = tryBambu(uid, uidLen, out);
     if (!decoded) decoded = tryQidi(uid, uidLen, out);
     if (!decoded) {
-      note = "MIFARE Classic tag, but not Bambu or QIDI. Creality tags are "
-             "AES-encrypted and are not supported — fill the fields in by hand.";
+      // The likely answer on a U1 owner's desk is a Snapmaker spool: those are
+      // MIFARE Classic 1K too, with per-tag keys nobody outside Snapmaker has,
+      // so no dump and no decoder will ever open one. Say the useful thing
+      // instead of listing what it isn't — the NTAG215 route works today and
+      // costs pennies. (Creality's are AES and equally closed.)
+      note = "MIFARE Classic tag with keys we don't have — a Snapmaker or "
+             "Creality spool, most likely. Neither format is public, so this "
+             "cannot be decoded. Put an NTAG215 sticker on the spool and write "
+             "it from Copy tag JSON; the printer reads those natively.";
     }
   } else {
     note = "unrecognised tag family";

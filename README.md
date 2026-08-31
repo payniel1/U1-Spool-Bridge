@@ -290,14 +290,14 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `native` | Decoder tests on the host, no hardware |
 
 Two binaries ship for the XIAOs, and a second archive covers the SuperMini and
-the C5 devkit. Measured on the **v1.17.2** images:
+the C5 devkit. Measured on the **v1.17.3** images:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,589,200 | 3,342,336 &nbsp;(`default_8MB`) | 47.6% | 45.3% | 60,508 |
-| `firmware-c3.bin` | 1,510,192 | 1,966,080 &nbsp;(`min_spiffs`) | 76.8% | 73.0% | 47,076 |
-| `firmware-c3-supermini.bin` | 1,510,288 | 1,966,080 | 76.8% | 73.0% | 47,076 |
-| `firmware-c5-devkit-n4.bin` | 1,603,776 | 1,966,080 | 81.6% | 77.7% | 60,404 |
+| `firmware-c5.bin` | 1,589,328 | 3,342,336 &nbsp;(`default_8MB`) | 47.6% | 45.3% | 60,508 |
+| `firmware-c3.bin` | 1,510,320 | 1,966,080 &nbsp;(`min_spiffs`) | 76.8% | 73.0% | 47,076 |
+| `firmware-c3-supermini.bin` | 1,510,416 | 1,966,080 | 76.9% | 73.0% | 47,076 |
+| `firmware-c5-devkit-n4.bin` | 1,604,048 | 1,966,080 | 81.6% | 77.8% | 60,404 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -966,14 +966,42 @@ sector  1  key A0A1A2A3A4A5 (A)
 ```
 
 A sector reading `no key worked` means the key is unknown, not that the tag is
-empty. If that is every sector, the next step is to get the keys — the
-[U1-RFID](https://github.com/DnG-Crafts/U1-RFID) Android app and MifareClassicTool
-are both ways in — and paste them into Extra MIFARE keys, which the dump then
-uses on the next run.
+empty. If some sectors open, paste the keys into **Extra MIFARE keys** in
+Settings and the next run uses them.
 
-It takes 20–40 s and the reader stops polling while it runs; it is a bench
-tool, not something to leave on. Block 3 of each sector is the key trailer and
-is deliberately not dumped.
+The read takes minutes on a tag whose keys we do not have, and the reader stops
+polling while it runs; it is a bench tool, not something to leave on. Block 3 of
+each sector is the key trailer and is deliberately not dumped. The result is
+kept on the box and served from `GET /api/dump`, so a browser that drops during
+the read can still collect it — **Get the last dump** does that from the card.
+
+### Snapmaker's own tags: settled, and the answer is no
+
+A dump of a genuine Snapmaker spool comes back **0 of 16**, sector 0 included.
+That is not a gap waiting to be filled — it is the end of the road, and it is
+worth writing down so nobody repeats the investigation:
+
+- paxx12's own documentation describes them as *"Mifare Classic 1K with
+  Snapmaker proprietary format"*, **"Proprietary (closed)"**, with programming
+  tools *"Snapmaker official only"*. The project most likely to have solved it
+  has not.
+- [SnapmakerResearchGroup/RFID](https://github.com/SnapmakerResearchGroup/RFID)
+  has a parser for **already-decrypted** data — so the field layout is known —
+  and nothing that gets the bytes off the tag.
+- Its key-derivation citation points at proxmark3's
+  [`mfc_algo_bambu_one`](https://github.com/RfidResearchGroup/proxmark3/blob/b380132cbbd8bea259e57a8a4bb6f376c69e14c5/common/generator.c#L580-L602),
+  which is **Bambu's** HKDF offered as an analogue. This firmware already
+  implements that exact derivation and tries it first on every sector. Its
+  failure is what a 0/16 result means.
+- The payload is signed with one of ten RSA keys, so even with the content you
+  could not write a tag the printer would accept.
+
+**What to do instead.** The U1 reads its own Snapmaker spools natively — but
+only on the printer's spool holder, and a spool in a drybox is not on the
+holder. So the tag is unreadable to both ends. Put an **NTAG215 sticker** on the
+spool, read the spool once, and write it with `GET /api/tagjson` (the **Copy tag
+JSON** button) using NFC Tools on a phone. From then on it behaves like every
+other spool you own, on either printer, for about 20p.
 
 ---
 
