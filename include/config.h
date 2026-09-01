@@ -38,6 +38,42 @@
 #define MAX_READERS  2
 #define READER_COUNT 1
 
+// One PN532 per board, and not by choice — by transport.
+//
+// Everything above the driver is already plural: g_readers[] and g_lanes[] are
+// arrays, the gate keeps per-lane state, the web UI grows reader tabs, and
+// every loop is bounded by READER_COUNT. So a two-reader build LOOKS like it
+// should just work, and it compiles.
+//
+// It does not work. tag_reader.cpp binds every instance to the one global
+// Serial1 and re-pins it inside begin():
+//
+//     READER_UART.setPins(pins.rx, pins.tx);
+//     _nfc = new Adafruit_PN532(pins.rst, &READER_UART);
+//
+// so whichever reader called begin() — or recover(), which runs on its own
+// whenever a module flaps — owns the pins, and the other silently reads
+// nothing. A UART has no addressing, so two PN532s on one port could not be
+// told apart even if the pins held still.
+//
+// Nor is there a second port to give them. SOC_UART_HP_NUM is 2 on both the
+// ESP32-C3 and the ESP32-C5: UART0 carries the ROM boot log, UART1 is the
+// reader. That is the whole supply.
+//
+// Raising this needs a transport that multi-drops — SPI with a chip select per
+// reader is the natural one — or time-multiplexing the single UART by holding
+// all but one module in reset over RSTO, which costs a PN532 re-init per
+// switch. Either is real work. Until one of them exists, fail here rather than
+// on a bench, where a dead second reader looks like bad wiring.
+//
+// Note this is deliberately not #ifndef-guarded, unlike the pin defines: a
+// -DREADER_COUNT=2 build flag is overridden right here (with a redefinition
+// warning) and never reaches the assert. Raising it means editing this line,
+// which is exactly when someone should be made to read the paragraph above.
+static_assert(READER_COUNT == 1,
+              "READER_COUNT > 1 needs a transport that can address more than "
+              "one module; every TagReader shares Serial1. See the note above.");
+
 // Seeed XIAO ESP32-C5 pads:  D4 = GPIO23 (SDA pad)   D5 = GPIO24 (SCL pad)
 //                            D2 = GPIO25 (RSTO)
 #ifndef PIN_PN532_RX
@@ -104,7 +140,7 @@
 
 #define AP_SSID     "U1-SpoolBridge"
 #define AP_PASSWORD "spoolbridge"   // >= 8 chars, change if you like
-#define FW_VERSION  "1.17.3"
+#define FW_VERSION  "1.17.4"
 
 // ---------------------------------------------------------------------------
 // Build fingerprint.

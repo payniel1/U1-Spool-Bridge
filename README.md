@@ -290,14 +290,14 @@ All targets build clean — no warnings with `-Wall -Wextra`:
 | `native` | Decoder tests on the host, no hardware |
 
 Two binaries ship for the XIAOs, and a second archive covers the SuperMini and
-the C5 devkit. Measured on the **v1.17.3** images:
+the C5 devkit. Measured on the **v1.17.4** images:
 
 | Image | Size | OTA slot | Used | Linked | Static RAM |
 |---|---|---|---|---|---|
-| `firmware-c5.bin` | 1,589,328 | 3,342,336 &nbsp;(`default_8MB`) | 47.6% | 45.3% | 60,508 |
-| `firmware-c3.bin` | 1,510,320 | 1,966,080 &nbsp;(`min_spiffs`) | 76.8% | 73.0% | 47,076 |
-| `firmware-c3-supermini.bin` | 1,510,416 | 1,966,080 | 76.9% | 73.0% | 47,076 |
-| `firmware-c5-devkit-n4.bin` | 1,604,048 | 1,966,080 | 81.6% | 77.8% | 60,404 |
+| `firmware-c5.bin` | 1,589,456 | 3,342,336 &nbsp;(`default_8MB`) | 47.6% | 45.3% | 60,508 |
+| `firmware-c3.bin` | 1,510,448 | 1,966,080 &nbsp;(`min_spiffs`) | 76.8% | 73.0% | 47,076 |
+| `firmware-c3-supermini.bin` | 1,510,544 | 1,966,080 | 76.8% | 73.0% | 47,076 |
+| `firmware-c5-devkit-n4.bin` | 1,604,032 | 1,966,080 | 81.6% | 77.8% | 60,404 |
 
 **Size** is the whole image as flashed, which is the figure that has to fit the
 slot; **Linked** is what PlatformIO's own "Flash used" line reports, which
@@ -345,6 +345,19 @@ Two things you must set per board:
 
 **Pins.** `-DPIN_PN532_RX/TX/RST`. Avoid the strapping pins — on the C3 those
 are GPIO2, GPIO8 and GPIO9 — and whatever carries the boot log.
+
+**One reader per board.** Everything above the driver is already plural —
+`g_readers[]`, per-lane gate state, reader tabs in the UI, every loop bounded by
+`READER_COUNT` — so a two-reader build looks like it should work. It cannot:
+`tag_reader.cpp` binds every instance to the single global `Serial1` and re-pins
+it inside `begin()`, so whichever reader called `begin()` or `recover()` last
+owns the pins and the other silently reads nothing. A UART has no addressing
+either. And there is no second port to give them — `SOC_UART_HP_NUM` is 2 on
+both the C3 and the C5, with UART0 carrying the ROM boot log. Raising
+`READER_COUNT` trips a `static_assert` in `config.h` that says so; going higher
+for real needs a transport that multi-drops (SPI, a chip select per reader) or
+time-multiplexing the one UART over RSTO at the cost of a PN532 re-init per
+switch.
 
 **The partition table**, which must match the board's real flash and must have
 two app slots. An 8 MB table on a 4 MB board *compiles perfectly* and then fails
